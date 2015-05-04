@@ -3,6 +3,9 @@
 // - Detect location of all STR in reference genome
 // - Profile STR from short reads using STR_FM
 
+// Usage: bpipe run STR-FM_pipeline.groovy *.fastq.gz
+// (currently testing with one pair of fastq.gz files)
+
 ///////////////////////////
 // Requirements/settings //
 ///////////////////////////
