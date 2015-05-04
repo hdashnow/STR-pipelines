@@ -1,3 +1,6 @@
 *.bam
 *.bam.bai
 *.vcf
+
+# Directories with output
+STR-FM/analysis/*
