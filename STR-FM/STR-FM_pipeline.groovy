@@ -12,15 +12,17 @@
 
 // reference genome in FASTA format --> REF
 BASE="/mnt/storage/harrietd/git"
-REF="/mnt/storage/shared/genomes/hg19/fasta/hg19.fa"
+//REF="/mnt/storage/shared/genomes/hg19/fasta/hg19.fa"
 REFNAME="hg19"
+// BWA indexed ref
+REF="/mnt/storage/shared/genomes/hg19/gatk/gatk.ucsc.hg19.fasta"
 
 // Path to STR-FM scripts
 STR_FM="$BASE/STR-FM"
 
 // index of mapping program (bwa, bowtie, etc) 
 // reference genome in FASTA and in 2bit file --> /path/to/2bit/ref.2bit (use utility from UCSC genome browser to create 2bit file version of reference genome)
-REF2bit = "2bitref.2bit"
+REF2bit="/mnt/storage/shared/genomes/hg19/gatk/hg19.2bit"
 
 // STR error rates (can be downloaded from https://usegalaxy.org/u/guru%40psu.edu/h/error-rates-files) --> errorrate.bymajorallele
 
@@ -30,7 +32,7 @@ GALAXY_TOOLS="/mnt/storage/harrietd/git/galaxy/tools"
 // Detect location of all STR in reference genome //
 ////////////////////////////////////////////////////
 
-motif_lens=["mono", "di", "tri", "tetra"]
+motif_lens=["mono"]//, "di", "tri", "tetra"]
 
 detect_ref_STRs = {
     doc "detect STR in reference genome"
@@ -55,7 +57,7 @@ detect_ref_STRs = {
         branch.minlength = 8
     }
 
-    produce("${REFNAME}.${outname}.out") {
+    produce("${REFNAME}.${outname}.txt") {
 
         exec """
             python $STR_FM/microsatellite.py $REF --fasta --period=$period --partialmotifs --minlength=$minlength --prefix=0 --suffix=0 --hamming=0 --multipleruns --flankdisplay=0  --splitbyvalidity  > $output
@@ -68,7 +70,7 @@ format_STRs = {
     output.dir = "detectSTRs"
 
     exec """
-        cat $input.out | awk 'BEGIN{FS="\t";OFS="\t"};{print \$6,\$2,\$2+\$1,\$4,\$1,length(\$4) }' > $output.TR
+        cat $input.txt | awk 'BEGIN{FS="\t";OFS="\t"};{print \$6,\$2,\$2+\$1,\$4,\$1,length(\$4) }' > $output.TR
     """
 }
 
@@ -81,45 +83,45 @@ format_STRs = {
 // location of all STR in reference genome (use PBS script name "sampleSTR_reference_profiling.txt) --> /path/to/STR/in/reference/genome.TR (you can make 4 separated TR files for 4 types of STRs)
 
 // ref=/path/to/reference/sequence/and/bwa/index/ref.fa
-// export PYTHONPATH=/path/to/galaxy-dist/lib/
+// export PYTHONPATH=/path/to/galaxy-dist/lib/ <-- This was done in my .bashrc, but probably should happen in the command
 // galaxydir=/path/to/galaxy-dist/tools
 
 detect_read_STR = {
     doc "detect STR in short read"
     output.dir = "detect_reads"
 
-    produce("${sample}.${outname}.out") {
+    from('fastq.gz') produce("${output.prefix.prefix.prefix}.${outname}.txt") {
         exec """
-             gzip -cd $input.fastq.gz | python $STR_FM/microsatellite.py  --fastq --period=$period --partialmotifs --minlength=5 --prefix=20 --suffix=20 --hamming=0 --multipleruns  > $output
+             gzip -cd $input1 | python $STR_FM/microsatellite.py  --fastq --period=$period --partialmotifs --minlength=5 --prefix=20 --suffix=20 --hamming=0 --multipleruns  > $output
         """
     }
 }
 
-@transform("new")
+@filter("renamed")
 rename_reads = {
     doc "change read name (replace space with underscore)"
     output.dir = "detect_reads"
 
-    exec """
-      python $STR_FM/changespacetounderscore_readname.py $input.out  $output.new 6
+    exec """ 
+        python $STR_FM/changespacetounderscore_readname.py $input.txt $output.txt 6
     """
 }
 
 flanking_seq = {
     doc "fetch flanking sequence of STRs for mapping"
-    output.dir "detect_reads"
+    output.dir = "detect_reads"
 
-    produce("${output}_ff_L.txt", "${output}_ff_R.txt"){
+    from('txt') transform("ff_L.txt", "ff_R.txt"){
         exec """
-            python $STR_FM/pair_fetch_DNA_ff.py $input.new $outputs 20 20
+            python $STR_FM/pair_fetch_DNA_ff.py $input.txt $output1 $output2 20 20
         """
     }
 }
 
-align_bwa = { 
+align_bwa = {
 
     doc "map flanking sequences using BWA - uniquely mapped no indel no deletion"
-    output.dir "align"
+    output.dir = "align"
 
     // transform two .txt fils (L and R flanks) into two .sai files and a .bam file
     from("txt","txt") transform("sai","sai","bam") {
@@ -131,14 +133,14 @@ align_bwa = {
         // Step 2 - bwa sampe
         exec """
             bwa sampe $REF $output1 $output2 $input1 $input2 |
-            samtools view -Sbu -F 12 -q 1 - > $output.bam
+            samtools view -Sbh -F 12 -q 1 - > $output.bam
         """
     }
 }
 
 sort_bam = {
     doc "sort result by read name and fix header"
-    output.dir "align"
+    output.dir = "align"
 
     produce("${input.prefix}.sorted.sam") {
         exec """
@@ -158,25 +160,31 @@ merge_flanks = {
      """
 }
 
-
-// Not sure how to actually use this join function as the instructions has it joining all the files together using an x = x + 1 style strategy
+// Note, this is different from the STR-FM script, which has all outputs of this step
+// be called the same name, ending in mono.RF.j 
+// This would overwrite the same file, so I have named them uniquely here.
+@transform("j")
 join_mapped = {
     doc "join mapped coordinate with STR length using read name"
     output.dir "align"
 
-    from("new","RF") transform("j") {
+    //from("txt","RF") transform("j") {
         exec """
-            python $GALAXY_TOOLS/filters/join.py $input.new $input.RF 6 1 $output.j "" "" --index_depth=3 --buffer=50000000 --fill_options_file='None'
+            python $GALAXY_TOOLS/filters/join.py $input.txt $input.RF 6 1 $output.j "" "" 
+                --index_depth=3 --buffer=50000000 --fill_options_file='None'
          """
-    }
+    //}
 }
 
+// Still more steps to go... 
 
 run {
     motif_lens * [ 
         detect_ref_STRs + format_STRs + 
         "%.fastq.gz" * [ 
-            detect_read_STR + rename_reads + flanking_seq + align_bwa + sort_bam
+            detect_read_STR + rename_reads + flanking_seq + 
+            align_bwa + sort_bam +
+            merge_flanks + join_mapped
         ]
     ]
 }
