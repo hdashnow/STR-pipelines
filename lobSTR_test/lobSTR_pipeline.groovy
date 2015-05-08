@@ -37,7 +37,6 @@ sort_bam = {
 }
 
 //Not working, and I'm not sure why
-@filter("merge")
 merge_bams = {
     doc "Merge BAM files from multiple lanes or samples together. BAM files should have unique sample names and / or read groups"
     produce(branch.sample + "merged.bam") {
@@ -47,7 +46,7 @@ merge_bams = {
                     USE_THREADING=true  \
                     VALIDATION_STRINGENCY=LENIENT  \
                     AS=true  \
-                    OUTPUT=${branch.sample}.bam
+                    OUTPUT=$output
         """
     }
 }
