@@ -154,7 +154,7 @@ sort_bam = {
     output.dir = "align"
 
         exec """
-            samtools sort -on $input.bam $output.prefix
+            samtools sort -n $input.bam $output.bam.prefix
          """
 }
 
