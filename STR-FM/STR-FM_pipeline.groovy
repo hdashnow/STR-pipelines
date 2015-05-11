@@ -32,11 +32,11 @@ GALAXY_TOOLS="/mnt/storage/harrietd/git/galaxy/tools"
 // Detect location of all STR in reference genome //
 ////////////////////////////////////////////////////
 
-motif_lens=["mono"]//, "di", "tri", "tetra"]
+motif_lens=["mono", "di", "tri", "tetra"]
 
 detect_ref_STRs = {
     doc "detect STR in reference genome"
-    output.dir = "detectSTRs"
+    output.dir = "refSTRs"
 
     branch.outname = branch.name
 
@@ -67,7 +67,7 @@ detect_ref_STRs = {
 
 format_STRs = {
     doc "format detected STRs"
-    output.dir = "detectSTRs"
+    output.dir = "refSTRs"
 
     exec """
         cat $input.txt | awk 'BEGIN{FS="\t";OFS="\t"};{print \$6,\$2,\$2+\$1,\$4,\$1,length(\$4) }' > $output.TR
@@ -124,7 +124,7 @@ align_bwa = {
     output.dir = "align"
 
     // transform two .txt fils (L and R flanks) into two .sai files and a .bam file
-    from("txt","txt") transform("sai","sai","bam") {
+    from("txt","txt") transform("sai","sai","sam") {
 
         // Step 1 - run both bwa aln commands in parallel
         multi "bwa aln -n 0 -o 0 $REF $input1 > $output1",
@@ -132,28 +132,46 @@ align_bwa = {
 
         // Step 2 - bwa sampe
         exec """
-            bwa sampe $REF $output1 $output2 $input1 $input2 |
-            samtools view -Sbh -F 12 -q 1 - > $output.bam
+            bwa sampe $REF $output1 $output2 $input1 $input2 > $output.sam
         """
     }
 }
 
+filter_sam_to_bam = {
+    doc "filter aligned reads -F 12"
+    output.dir = "align"
+
+    produce("${input.prefix}.filtered.bam") {
+        exec """
+            samtools view -Sbhu -F 12 -q 1 $input.sam > $output
+         """
+    }
+}
+
+@filter("sorted")
 sort_bam = {
     doc "sort result by read name and fix header"
     output.dir = "align"
 
-    produce("${input.prefix}.sorted.sam") {
         exec """
-            samtools sort -on $input.bam |
-            samtools view -h -o $output.sam -
+            samtools sort -on $input.bam $output.prefix
          """
-    }
+}
+
+@transform("sam")
+bam_to_sam = {
+    doc "transform bam to sam"
+    output.dir = "align"
+
+        exec """
+            samtools view -h $input.bam > $output.sam
+         """
 }
 
 @transform("RF")
 merge_flanks = {
     doc "merge faux paired end reads"
-    output.dir "align"
+    output.dir = "align"
 
     exec """
         python $STR_FM/PEsortedSAM2readprofile.py $input.sam $REF2bit 100 250 $output.RF
@@ -166,7 +184,7 @@ merge_flanks = {
 @transform("j")
 join_mapped = {
     doc "join mapped coordinate with STR length using read name"
-    output.dir "align"
+    output.dir = "align"
 
     //from("txt","RF") transform("j") {
         exec """
@@ -183,7 +201,7 @@ run {
         detect_ref_STRs + format_STRs + 
         "%.fastq.gz" * [ 
             detect_read_STR + rename_reads + flanking_seq + 
-            align_bwa + sort_bam +
+            align_bwa + filter_sam_to_bam +  sort_bam +  bam_to_sam + 
             merge_flanks + join_mapped
         ]
     ]
