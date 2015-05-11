@@ -1,8 +1,9 @@
-PATH_TO_LOBSTR="/vlsci/VR0320/hdashnow/test_msat_genotyping/lobSTR_test/lobSTR-3.0.3"
-LOBSTR_BUNDLE="/vlsci/VR0320/hdashnow/test_msat_genotyping/lobSTR_test/hg19_v3.0.2"
+// Paths relative to the analysis directory
+PATH_TO_LOBSTR="../lobSTR-3.0.3"
+LOBSTR_BUNDLE="../hg19_v3.0.2"
 LOBSTR_REF_PATH="$LOBSTR_BUNDLE/lobstr_v3.0.2_hg19_ref"
 
-load "/vlsci/VR0320/hdashnow/test_msat_genotyping/lobSTR_test/bpipe.config"
+load "../bpipe.config"
 
 set_sample_info = {
 
@@ -36,17 +37,16 @@ sort_bam = {
 }
 
 //Not working, and I'm not sure why
-@filter("merge")
 merge_bams = {
     doc "Merge BAM files from multiple lanes or samples together. BAM files should have unique sample names and / or read groups"
-    produce(branch.sample + ".bam") {
+    produce(branch.sample + "merged.bam") {
         exec """
                 MergeSamFiles
                     ${inputs.bam.split().collect { "INPUT="+it }.join(' ')} \
                     USE_THREADING=true  \
                     VALIDATION_STRINGENCY=LENIENT  \
                     AS=true  \
-                    OUTPUT=${branch.sample}.bam
+                    OUTPUT=$output
         """
     }
 }
