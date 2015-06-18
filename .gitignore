@@ -1,7 +1,22 @@
+# Software
+lobSTR_test/lobSTR-3.0.3*
+
+#Reference data
+lobSTR_test/marshfield_annotations/
+lobSTR_test/lobSTR_v3.0.2_hg19_resource_bundle*
+lobSTR_test/1000Genomes_Phase_1.vcf.gz
+lobSTR_test/hg19_v3.0.2/
+
+# Output files
 *.bam
 *.bam.bai
 *.vcf
+*commandlog.txt
+*.bpipe/
+
 
 # Directories with output
 STR-FM/analysis/*
 repeatseq/analysis/*
+lobSTR_test/lobSTR_sample-tmp_1/*
+lobSTR_test/human_trio/*
