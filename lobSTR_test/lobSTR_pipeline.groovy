@@ -1,9 +1,9 @@
 // Paths relative to the analysis directory
-PATH_TO_LOBSTR="../lobSTR-3.0.3"
-LOBSTR_BUNDLE="../hg19_v3.0.2"
+PATH_TO_LOBSTR="/vlsci/VR0320/hdashnow/git/STR-pipelines/lobSTR_test/lobSTR-3.0.3"
+LOBSTR_BUNDLE="/vlsci/VR0320/hdashnow/git/STR-pipelines/lobSTR_test/hg19_v3.0.2"
 LOBSTR_REF_PATH="$LOBSTR_BUNDLE/lobstr_v3.0.2_hg19_ref"
 
-load "../bpipe.config"
+load "/vlsci/VR0320/hdashnow/git/STR-pipelines/lobSTR_test/bpipe.config"
 
 set_sample_info = {
 
