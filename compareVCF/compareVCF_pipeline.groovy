@@ -24,19 +24,30 @@ trim_variants = {
         exec "bcftools norm -f $REF -O v $input.vcf > $output.vcf"
 }
 
+compress_vcf = {
+    from('vcf') transform('vcf.gz') {
+        exec "bgzip -c $input.vcf > $output.gz"
+    }
+}
+
+index_vcf = {
+    from('vcf.gz') produce(input.gz + '.tbi') {
+        exec "tabix -p vcf $input.gz"
+    }
+    forward input.gz
+}
+
 compare_vcfs = {
-    from('vcf', 'vcf') produce(input1.vcf.prefix + '-' + input2.vcf.prefix + '.diff.indv_in_files', 
-        input1.vcf.prefix + '-' + input2.vcf.prefix + '.diff.sites_in_files', 
-        input1.vcf.prefix + '-' + input2.vcf.prefix + '.diff.sites') {
+    from('vcf.gz', 'vcf.gz') produce(input1.vcf.prefix + '-' + input2.vcf.prefix + '.diff.txt') { 
         exec """
-            vcftools --vcf $input1 --diff $input2 --diff-site-discordance
-            --out $output1.prefix.prefix 
+            vcf-compare -g $input1.gz $input2.gz > $output.txt
         """
     }
 }
 
 run {
     "%.vcf" * [
-        set_sample_info + trim_variants 
+        set_sample_info + trim_variants +
+        compress_vcf + index_vcf
     ] + compare_vcfs
 }
