@@ -27,10 +27,10 @@ trim_variants = {
 compare_vcfs = {
     from('vcf', 'vcf') produce(input1.vcf.prefix + '-' + input2.vcf.prefix + '.diff.indv_in_files', 
         input1.vcf.prefix + '-' + input2.vcf.prefix + '.diff.sites_in_files', 
-        input1.vcf.prefix + '-' + input2.vcf.prefix + '.summary.txt') {
+        input1.vcf.prefix + '-' + input2.vcf.prefix + '.diff.sites') {
         exec """
             vcftools --vcf $input1 --diff $input2 --diff-site-discordance
-            --out $output1.prefix.prefix 2> $output.txt
+            --out $output1.prefix.prefix 
         """
     }
 }
