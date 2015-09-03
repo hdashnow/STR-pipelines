@@ -17,7 +17,7 @@ generate_reads = {
 }
 
 gzip = {
-    transform('.fq') to('.fq.gz') {
+    transform('.fq') to('.fastq.gz') {
         exec "gzip -c $input.fq > $output.gz" 
     }
 }
