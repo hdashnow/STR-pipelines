@@ -18,15 +18,21 @@ set_sample_info = {
     }
 
 // -O v for vcf, -O z for vcf.gz
-// expecting vcf.gz input?
+// Also, sort.
 @filter('trimmed')
 trim_variants = {
-        exec "bcftools norm -f $REF -O v $input.vcf > $output.vcf"
+        exec "bcftools norm -f $REF -O v $input.vcf | vcf-sort > $output.vcf"
 }
 
 compress_vcf = {
     from('vcf') transform('vcf.gz') {
         exec "bgzip -c $input.vcf > $output.gz"
+    }
+}
+
+sort_vcf = {
+    from('vcf.gz') transform('sorted.vcf.gz') {
+        exec "vcf-sort $input.gz > $output.gz"
     }
 }
 
@@ -45,9 +51,23 @@ compare_vcfs = {
     }
 }
 
+intersect_vcfs = {
+    output.dir = "intersections"
+
+    from('vcf.gz', 'vcf.gz') produce('intersection0_1.vcf.gz', 'intersection0.vcf.gz', 'intersection1.vcf.gz', 'intersection_README') { 
+        exec """
+            vcf-isec -p $output1.prefix.prefix.prefix $input1.gz $input2.gz
+        """
+    }
+}
+
 run {
     "%.vcf" * [
         set_sample_info + trim_variants +
         compress_vcf + index_vcf
-    ] + compare_vcfs
+    ] + 
+    [
+        compare_vcfs,
+        intersect_vcfs
+    ]
 }

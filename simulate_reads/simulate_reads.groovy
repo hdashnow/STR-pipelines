@@ -9,16 +9,24 @@ generate_reads = {
         def outname = output.prefix[0..-2]
         exec """
             $ART/art_illumina -i $input.fasta -p -na 
-                -l 150 -ss HS25 -f 20 
+                -l 150 -ss HS25 -f 30 
                 -m 500 -s 50 
                 -o $outname
-        """
+        ""","quick"
     }
 }
 
 gzip = {
     transform('.fq') to('.fastq.gz') {
-        exec "gzip -c $input.fq > $output.gz" 
+        exec "gzip -c $input.fq > $output.gz","quick" 
+    }
+}
+
+fastqc = {
+    doc "Run FASTQC to generate QC metrics for raw reads"
+    output.dir = "fastqc"
+    transform('.fastq.gz')  to('_fastqc.zip') {
+        exec "fastqc -o ${output.dir} $inputs.gz","quick"
     }
 }
 
@@ -27,6 +35,6 @@ run {
         generate_reads
     ] +
     "%.fq" * [ 
-        gzip 
+        gzip + fastqc
     ]
 }

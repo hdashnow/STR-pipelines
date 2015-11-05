@@ -15,7 +15,7 @@ set_sample_info = {
     doc "Validate and set information about the sample to be processed"
 
     branch.sample = branch.name
-    branch.lane = 001 //(input1 =~ /.*L([0-9]*)_*R.*/)[0][1].toInteger()
+    branch.lane = (input1 =~ /.*L([0-9]*)_*R.*/)[0][1].toInteger()
 }
 
 align_bwa = {
@@ -43,16 +43,16 @@ genotype = {
 
     from("bam") transform("bam.vcf") {
         exec """
-            $REPEATSEQ/repeatseq -emitconfidentsites $input.bam $REF $REGIONS
+            $REPEATSEQ/repeatseq $input.bam $REF $REGIONS
         """
     }
 }
 
 run {
-    '%_R*.fastq.gz' * [
-        set_sample_info +
-        align_bwa + index_bam
-    ] +
+//    '%_R*.fastq.gz' * [
+//        set_sample_info +
+//        align_bwa + index_bam
+//    ] +
 
     "%.bam" * [
         genotype
