@@ -17,7 +17,7 @@ generate_vcf = {
     doc "Generate a VCF of STR mutations and stutter"
 }
 
-@Transform(fasta)
+@Transform("fasta")
 mutate_ref = {
     doc "Generate a version of the reference genome (or subset) with mutations given by the input VCF"
     exec """
@@ -119,5 +119,5 @@ run {
     '%_R*.fastq.gz' * [
         set_sample_info +
         align_bwa + index_bam
-
+    ]
 }
