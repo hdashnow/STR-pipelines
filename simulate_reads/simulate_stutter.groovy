@@ -2,7 +2,7 @@
 
 ART='/vlsci/VR0320/hdashnow/art_bin_ChocolateCherryCake'
 REF='/vlsci/VR0002/shared/Reference_Files/GATK_bundle_Refs/hg19/ucsc.hg19.fasta' 
-GATK="/usr/local/gatk/3.4-46"
+GATK="/usr/local/gatk/3.4-46/GenomeAnalysisTK.jar"
 
 def get_fname(path) {
     x = path.split("/")[-1]
@@ -21,7 +21,7 @@ generate_vcf = {
 mutate_ref = {
     doc "Generate a version of the reference genome (or subset) with mutations given by the input VCF"
     exec """
-        java -Xmx4g -jar $GATK/GenomeAnalysisTK.jar
+        java -Xmx4g -jar $GATK
             -T FastaAlternateReferenceMaker
             -R $REF
             -o $output.fasta
@@ -100,6 +100,32 @@ align_bwa = {
     }
 }
 
+RealignerTargetCreator = {
+    transform("bam") to ("intervals") {
+        exec """
+            java -Xmx2g -jar $GATK 
+                -T RealignerTargetCreator
+                -R $REF
+                -I $input.bam
+                -o $output.intervals
+        """
+    }
+    forward input
+}
+
+@filter("realigned")
+IndelRealigner = {
+    exec """
+        java -Xmx4g -jar $GATK
+            -T IndelRealigner
+            -R $REF
+            -I $input.bam
+            -targetIntervals $input.intervals
+            -o $output.bam
+            --consensusDeterminationModel USE_SW
+            --maxPositionalMoveAllowed 500
+    """
+}
 
 /////////////////////////////
 // Run pipeline
@@ -118,6 +144,7 @@ run {
 
     '%_R*.fastq.gz' * [
         set_sample_info +
-        align_bwa + index_bam
+        align_bwa + index_bam +
+        RealignerTargetCreator + IndelRealigner
     ]
 }
