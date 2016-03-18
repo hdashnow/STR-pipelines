@@ -25,7 +25,7 @@ mutate_ref = {
             -T FastaAlternateReferenceMaker
             -R $REF
             -o $output.fasta
-            -L chr6:16,243,709-16,793,549
+            -L /vlsci/VR0320/hdashnow/git/STR-pipelines/simulate_reads/ATXN1.bed
             -V $input.vcf
     """
 }
