@@ -32,7 +32,7 @@ def parse_args():
         help='bed file containing genomic locations of STRs and their repeat units. Genomic locations should be relative to the fasta reference.')
     parser.add_argument(
         '--output', type=str, required=False,
-        help='Base name for output files. Defaults to stdout.) #XXX might need to rethink this stdout default. 
+        help='Base name for output files')
     parser.add_argument(
         '--base0', action='store_true',
         help='Genomic positions in bed file and region are 0-based. Otherwise assumed to be 1-based.')
@@ -126,20 +126,20 @@ def parse_bed(bedfilename, bed_dict = {}, position_base = 1):
                 bed_dict[unique_id] = {"chr":ref_chr, "start":ref_start, "stop":ref_stop, "name":name}
     return bed_dict
 
-def get_vcf_writer(template, vcf_outfile):
-    with vcf.Reader(open(template, "rb")) as vcf_reader:
-        vcf_writer = vcf.Writer(vcf_outfile, vcf_reader)
+def get_vcf_writer(template, vcf_outfile): #XXX write a temporary template vcf with correct date, source etc.
+    with open(template) as vcf_template:
+        vcf_reader = vcf.Reader(vcf_template)
+        vcf_writer = vcf.Writer(open(vcf_outfile, 'w'), vcf_reader)
+        for record in vcf_reader:
+            vcf_writer.write(record)
     return vcf_writer
 
 def main():
     # Parse command line arguments
     args = parse_args()
-    outfile = args.output
+    outfile_base = args.output
 
-    if outfile:
-        outstream = open(outfile, 'w')
-    else:
-        outstream = sys.stdout
+    vcf_out = outfile_base + '.vcf'
 
     if args.base0:
         position_base = 0
@@ -147,8 +147,9 @@ def main():
         position_base = 1
 
     bed_dict = {}
-    bed_dict = parse_bed(args.bed, bed_dict, position_base)
+    #bed_dict = parse_bed(args.bed, bed_dict, position_base)
 
+    writer = get_vcf_writer('ATXN1.simulation.vcf', vcf_out)
 
 if __name__ == '__main__':
     main()
