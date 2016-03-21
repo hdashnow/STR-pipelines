@@ -5,13 +5,15 @@ To be fed into genome and read simulation stages.
 Output:
 A single vcf file containing the true genotype that is being simulated.
 A series of vcf files for the stutter (one for each STR variant)
+A bed file corresponding to the region around the STR.
 A single file with the list of all vcf files and their desired frequencies
 """
 
 import sys
 from argparse import (ArgumentParser, FileType)
-from Bio.Seq import Seq
+from Bio.Seq import Seq #BioPython
 from Bio.Alphabet import generic_dna
+import vcf #PyVCF
 
 __author__ = "Harriet Dashnow"
 __credits__ = ["Harriet Dashnow"]
@@ -30,10 +32,13 @@ def parse_args():
         help='bed file containing genomic locations of STRs and their repeat units. Genomic locations should be relative to the fasta reference.')
     parser.add_argument(
         '--output', type=str, required=False,
-        help='Base name for output files. Defaults to stdout.')
+        help='Base name for output files. Defaults to stdout.) #XXX might need to rethink this stdout default. 
     parser.add_argument(
-        '--base0', type=bool, default=False,
+        '--base0', action='store_true',
         help='Genomic positions in bed file and region are 0-based. Otherwise assumed to be 1-based.')
+    parser.add_argument(
+        '--flank', type=int, default=100000,
+        help='Number of flanking base to include in the output bed file on either side of the STR.')
     return parser.parse_args()
 
 def circular_permuted(x):
@@ -110,8 +115,8 @@ def parse_bed(bedfilename, bed_dict = {}, position_base = 1):
             if ref_stop < ref_start:
                 ref_start = int(split_line[2]) - position_base
                 ref_stop = int(split_line[1]) - position_base
-                sys.stdout.write('Warning, bed start position greater than end position for line:')
-                sys.stdout.write(bedfile_line)
+                sys.stderr.write('Warning, bed start position greater than end position for line:')
+                sys.stderr.write(bedfile_line)
             if len(split_line) > 3:
                 name = split_line[3] #XXX Need to parse out STR repeat unit here
             else:
@@ -120,6 +125,11 @@ def parse_bed(bedfilename, bed_dict = {}, position_base = 1):
             if unique_id not in bed_dict:
                 bed_dict[unique_id] = {"chr":ref_chr, "start":ref_start, "stop":ref_stop, "name":name}
     return bed_dict
+
+def get_vcf_writer(template, vcf_outfile):
+    with vcf.Reader(open(template, "rb")) as vcf_reader:
+        vcf_writer = vcf.Writer(vcf_outfile, vcf_reader)
+    return vcf_writer
 
 def main():
     # Parse command line arguments
