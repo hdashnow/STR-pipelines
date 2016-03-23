@@ -157,9 +157,15 @@ def main():
     else:
         position_base = 1
 
+    # Parse STR regions that need to be simulated
     bed_dict = {}
     #bed_dict = parse_bed(args.bed, bed_dict, position_base)
 
+    # Generate a genotype for these - totally random, or heterozygous pathogenic?
+    # Calculate stutter probability profile for each allele
+    # Generate stutter for each allele
+    # Write true genotype vcf, stutter vcfs and their corresponding probabilities
+    
     vcf_writer = get_vcf_writer(vcf_out)
 
     record = vcf.model._Record(CHROM='chr6', POS=16243709, ID='.', REF='T',
@@ -167,6 +173,9 @@ def main():
                                 QUAL='.', FILTER='PASS', INFO={'RU':'GCT', 'RL':29},
                                 FORMAT='.', sample_indexes=[], samples=None)
     vcf_writer.write_record(record)
+
+
+
 
 if __name__ == '__main__':
     main()
