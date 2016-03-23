@@ -14,12 +14,13 @@ from argparse import (ArgumentParser, FileType)
 from Bio.Seq import Seq #BioPython
 from Bio.Alphabet import generic_dna
 import vcf #PyVCF
+import pysam #note: can be tricky to install, used bioconda channel
 
-__author__ = "Harriet Dashnow"
-__credits__ = ["Harriet Dashnow"]
-__license__ = "MIT"
-__version__ = "0.1.0"
-__email__ = "h.dashnow@gmail.com"
+__author__ = 'Harriet Dashnow'
+__credits__ = ['Harriet Dashnow']
+__license__ = 'MIT'
+__version__ = '0.1.0'
+__email__ = 'h.dashnow@gmail.com'
 
 def parse_args():
     """Parse the input arguments, use '-h' for help"""
@@ -89,23 +90,35 @@ def normalise_str(in_dna):
     all_possible.sort()
     return(all_possible[0])
 
-def parse_bed(bedfilename, bed_dict = {}, position_base = 1):
+def is_dna(a):
+    """Return True if input contains only DNA characters, otherwise return False
+
+    Args:
+        a (str): string to test
+
+    Returns:
+        bool: True if all characters are DNA, otherwise False
+    """
+    dna_chars = 'atcgnATCGN'
+    return all(i in dna_chars for i in a)
+
+def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
     """Parse regions from bed file. Ignore lines starting with #.
 
     Args:
         bedfilename (str): bed format text file in in format: chr start stop [name] ... (additional columns ignored)
         bed_dict (dict): existing genomic regions to include in the output.
-            format: bed_dict[unique_id] = {"chr":str, "start":int, "stop":int, "name":None}
+            format: bed_dict[unique_id] = {'chr':str, 'start':int, 'stop':int, 'name':None}
         position_base (int): 0 or 1. The starting position the genomic regions
             are measured relative to. If 1, all postions will be converted to 0.
 
     Returns:
-        dict: bed_dict[unique_id] = {"chr":str, "start":int, "stop":int, "name":None}
+        dict: bed_dict[unique_id] = {'chr':str, 'start':int, 'stop':int, 'name':None}
             Genomic regions, in base-0.
     """
     with open(bedfilename) as bedfile:
         for bedfile_line in bedfile:
-            if bedfile_line.startswith("#"):
+            if bedfile_line.startswith('#'):
                 continue
             split_line = bedfile_line.split()
             ref_chr = split_line[0]
@@ -119,11 +132,16 @@ def parse_bed(bedfilename, bed_dict = {}, position_base = 1):
                 sys.stderr.write(bedfile_line)
             if len(split_line) > 3:
                 name = split_line[3] #XXX Need to parse out STR repeat unit here
+                if is_dna(name):
+                    repeatunit = name
             else:
                 name = None
-            unique_id = "{0}:{1}-{2}".format(ref_chr,ref_start,ref_stop)
+                repeatunit = None
+            unique_id = '{0}:{1}-{2}'.format(ref_chr,ref_start,ref_stop)
             if unique_id not in bed_dict:
-                bed_dict[unique_id] = {"chr":ref_chr, "start":ref_start, "stop":ref_stop, "name":name}
+                bed_dict[unique_id] = {'chr':ref_chr, 'start':ref_start,
+                                        'stop':ref_stop, 'name':name,
+                                        'repeatunit':repeatunit}
     return bed_dict
 
 def get_vcf_writer(vcf_outfile):
@@ -131,7 +149,7 @@ def get_vcf_writer(vcf_outfile):
     Writes a template vcf containing header info (can be deleted afterwards?)"""
 
     template = 'template.vcf'
-    with open(template, "w") as vcf_template:
+    with open(template, 'w') as vcf_template:
         vcf_template.write('##fileformat=VCFv4.1\n')
         vcf_template.write('##source={}\n'.format('generate_stutter_vcfs.py'))
         vcf_template.write('##reference={}\n'.format('ucsc.hg19.fasta'))
@@ -158,21 +176,35 @@ def main():
         position_base = 1
 
     # Parse STR regions that need to be simulated
-    bed_dict = {}
-    #bed_dict = parse_bed(args.bed, bed_dict, position_base)
+    bed_dict = parse_bed(args.bed, position_base)
+    print(bed_dict)
+    # get corresponding bit of the fasta file
+    fastafile = pysam.Fastafile(args.ref)
+    for region in bed_dict:
+        chrom = bed_dict[region]['chr']
+        start = bed_dict[region]['start']
+        stop = bed_dict[region]['stop']
+        name = bed_dict[region]['name']
+        repeatunit = bed_dict[region]['repeatunit']
+    ref_sequence = fastafile.fetch(chrom, start, stop)  # note zero-based indexing c.f. 1-based indexing in vcf
 
     # Generate a genotype for these - totally random, or heterozygous pathogenic?
+    #mutant_str = mutate_str(ref_sequence, repeatunit, delta)
+
     # Calculate stutter probability profile for each allele
+    # Parameters: repeat unit size, repeat length?
+
     # Generate stutter for each allele
+
     # Write true genotype vcf, stutter vcfs and their corresponding probabilities
-    
+
     vcf_writer = get_vcf_writer(vcf_out)
 
     record = vcf.model._Record(CHROM='chr6', POS=16243709, ID='.', REF='T',
                                 ALT=[vcf.model._Substitution('TGCTGCTGCTGCTGCTGCTGCTGCTGCTGCT')],
                                 QUAL='.', FILTER='PASS', INFO={'RU':'GCT', 'RL':29},
                                 FORMAT='.', sample_indexes=[], samples=None)
-    vcf_writer.write_record(record)
+    #vcf_writer.write_record(record)
 
 
 
