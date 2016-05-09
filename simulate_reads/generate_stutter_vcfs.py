@@ -15,6 +15,7 @@ from Bio.Seq import Seq #BioPython
 from Bio.Alphabet import generic_dna
 import vcf #PyVCF
 import pysam #note: can be tricky to install, used bioconda channel
+import random
 
 __author__ = 'Harriet Dashnow'
 __credits__ = ['Harriet Dashnow']
@@ -40,7 +41,11 @@ def parse_args():
     parser.add_argument(
         '--flank', type=int, default=100000,
         help='Number of flanking base to include in the output bed file on either side of the STR.')
+    parser.add_argument(
+        '--seed', required=False,
+        help='Random seed (can be any hashible input).')
     return parser.parse_args()
+
 
 def circular_permuted(x):
     """Generates all possible circular permutations of the input.
@@ -144,6 +149,70 @@ def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
                                         'repeatunit':repeatunit}
     return bed_dict
 
+def mutate_str(ref_sequence, repeatunit, delta):
+    """Mutate a DNA sequence containing a microsatellite by inserting or
+    deleating repeat units of that microsatellite.
+
+    Args:
+        ref_sequence (str): The reference DNA sequence to be mutated.
+        repeatunit (str): DNA repeat unit to be inserted/deleted from the
+            ref_sequence.
+        delta (int): Number of repeat units to add/remove. Positive if creating
+            an insertion, negative if a deletion. 0 will return the input
+            sequence.
+
+    Returns:
+        str: The mutated DNA sequence.
+    """
+    # Check ref_sequence and repeatunit are DNA
+    if not is_dna(ref_sequence):
+        raise ValueError("{0} is not a valid DNA sequence".format(ref_sequence))
+    if not is_dna(repeatunit):
+        raise ValueError("{0} is not a valid DNA sequence".format(repeatunit))
+    repeatunitlen = len(repeatunit)
+    if delta == 0:
+        return(ref_sequence)
+    if delta > 0: # Insertion
+        # select a position at random, sampling without replacement
+        i_max = len(ref_sequence)-repeatunitlen
+        for i in random.sample(range(i_max), i_max):
+            # Check that there is a repeat unit to the right of this position
+            bases_to_right = ref_sequence[i:i+repeatunitlen]
+            if normalise_str(bases_to_right) == normalise_str(repeatunit):
+                # Insert repeat units at that position
+                # (by replicating the reference version of the repeat unit)
+                new_sequence = ref_sequence[:i] + bases_to_right * delta + ref_sequence[i:]
+                return(new_sequence)
+        # Check the last few bases for the repeat unit
+        last_bases = ref_sequence[-repeatunitlen:]
+        if normalise_str(last_bases) == normalise_str(repeatunit):
+            # Insert repeat units at end of sequence
+            new_sequence = ref_sequence + last_bases * delta
+            return(new_sequence)
+        # Check to make sure a solution was found
+        raise ValueError("The repeat unit {0} was not found in {1}".format(repeatunit, ref_sequence))
+    if delta < 0: # Deletion
+        deletion_size = repeatunitlen * -delta
+        if deletion_size > len(ref_sequence):
+            raise ValueError("Deletion of {0} {1} repeat units is larger than the input sequence {2}".format(-delta, repeatunit, ref_sequence))
+        i_max = len(ref_sequence) - deletion_size + 1
+        for i in random.sample(range(i_max), i_max):
+            bases_to_right = ref_sequence[i:i+deletion_size]
+            # Check if the first few bases contain the repeat unit (or a transposition of it)
+            for j in range(len(bases_to_right)):
+                ref_seg = bases_to_right[j:j+2]
+                # Find the version of the repeat unit present in the ref
+                if normalise_str(repeatunit) == normalise_str(ref_seg):
+                    ref_unit = ref_seg
+                    # Check if there are enough repeat units to be deleted
+                    if bases_to_right == ref_unit * -delta:
+                        # Generate mutated sequence
+                        new_sequence = ref_sequence[:i] + ref_sequence[i+deletion_size:]
+                        return(new_sequence)
+                else:
+                    break
+        raise ValueError("There were not {0} copies of {1} repeat unit available to be deleted in {2}.".format(-delta, repeatunit, ref_sequence))
+
 def get_vcf_writer(vcf_outfile):
     """Generate a vcf writer object.
     Writes a template vcf containing header info (can be deleted afterwards?)"""
@@ -175,6 +244,9 @@ def main():
     else:
         position_base = 1
 
+    if args.seed:
+        random.seed(args.seed)
+
     # Parse STR regions that need to be simulated
     bed_dict = parse_bed(args.bed, position_base)
     print(bed_dict)
@@ -186,10 +258,10 @@ def main():
         stop = bed_dict[region]['stop']
         name = bed_dict[region]['name']
         repeatunit = bed_dict[region]['repeatunit']
-    ref_sequence = fastafile.fetch(chrom, start, stop)  # note zero-based indexing c.f. 1-based indexing in vcf
+        ref_sequence = fastafile.fetch(chrom, start, stop)  # note zero-based indexing c.f. 1-based indexing in vcf
 
     # Generate a genotype for these - totally random, or heterozygous pathogenic?
-    #mutant_str = mutate_str(ref_sequence, repeatunit, delta)
+    #variant_str = mutate_str(ref_sequence, repeatunit, delta)
 
     # Calculate stutter probability profile for each allele
     # Parameters: repeat unit size, repeat length?
