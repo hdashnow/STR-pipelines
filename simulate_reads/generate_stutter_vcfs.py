@@ -36,6 +36,12 @@ def parse_args():
         '--output', type=str, required=False,
         help='Base name for output files')
     parser.add_argument(
+        '--truth', type=str, required=False,
+        help='File name for output vcf of true genotypes. Default: output base name .truth.vcf')
+    parser.add_argument(
+        '--stutter_output', type=str, required=False,
+        help='File giving names of stutter vcf files with corresponding stutter probabilities. Default: stdout')
+    parser.add_argument(
         '--base0', action='store_true',
         help='Genomic positions in bed file and region are 0-based. Otherwise assumed to be 1-based.')
     parser.add_argument(
@@ -138,7 +144,7 @@ def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
             if len(split_line) > 3:
                 name = split_line[3] #XXX Need to parse out STR repeat unit here
                 if is_dna(name):
-                    repeatunit = name
+                    repeatunit = name.upper()
             else:
                 name = None
                 repeatunit = None
@@ -200,7 +206,7 @@ def mutate_str(ref_sequence, repeatunit, delta):
             bases_to_right = ref_sequence[i:i+deletion_size]
             # Check if the first few bases contain the repeat unit (or a transposition of it)
             for j in range(len(bases_to_right)):
-                ref_seg = bases_to_right[j:j+2]
+                ref_seg = bases_to_right[j:j+repeatunitlen]
                 # Find the version of the repeat unit present in the ref
                 if normalise_str(repeatunit) == normalise_str(ref_seg):
                     ref_unit = ref_seg
@@ -237,7 +243,16 @@ def main():
     args = parse_args()
     outfile_base = args.output
 
-    vcf_out = outfile_base + '.vcf'
+    if args.truth:
+        truth_fname = args.truth
+    else:
+        truth_fname = outfile_base + '.truth.vcf'
+    vcf_truth = get_vcf_writer(truth_fname)
+
+    if args.stutter_output:
+        vcf_probs_writer = open(args.stutter_output, "w")
+    else:
+        vcf_probs_writer = sys.stdout
 
     if args.base0:
         position_base = 0
@@ -247,9 +262,19 @@ def main():
     if args.seed:
         random.seed(args.seed)
 
+    # Hard-coding some probabilities for testing
+    # Gymrek, M. (2016). PCR-free library preparation greatly reduces stutter noise at short tandem repeats.
+    # Retrieved from http://biorxiv.org/lookup/doi/10.1101/043448
+    #XXX But I'm not sure about these numbers. They don't add up to 1 for 3 and 4 bp repeat units
+    # probability of stutter occuring:
+    prop_of_stutter = {1: 0.17, 2: 0.038, 3: 0.011, 4: 0.0069, 5: 0.0074, 6: 0.014}
+    # if stutter occurs, distribution of deltas:
+    RU2_stutter = [[-3, -2, -1, 1, 2], [0.02, 0.2, 0.6, 0.09, 0.02]]
+    RU3_stutter = [[-3, -2, -1, 1, 2], [0.01, 0.1, 0.45, 0.05, 0.01]]
+    RU4_stutter = [[-2, -1, 1, 2], [0.05, 0.34, 0.04, 0.005]]
+
     # Parse STR regions that need to be simulated
     bed_dict = parse_bed(args.bed, position_base)
-    print(bed_dict)
     # get corresponding bit of the fasta file
     fastafile = pysam.Fastafile(args.ref)
     for region in bed_dict:
@@ -258,24 +283,46 @@ def main():
         stop = bed_dict[region]['stop']
         name = bed_dict[region]['name']
         repeatunit = bed_dict[region]['repeatunit']
-        ref_sequence = fastafile.fetch(chrom, start, stop)  # note zero-based indexing c.f. 1-based indexing in vcf
+        ref_sequence = fastafile.fetch(chrom, start, stop).upper()  # note zero-based indexing c.f. 1-based indexing in vcf
 
-    # Generate a genotype for these - totally random, or heterozygous pathogenic?
-    #variant_str = mutate_str(ref_sequence, repeatunit, delta)
+        #delta = 1 #XXX need to generate delta, or get from input
 
-    # Calculate stutter probability profile for each allele
-    # Parameters: repeat unit size, repeat length?
+        # Generate a genotype for these - totally random, or heterozygous pathogenic?
+        allele1_delta = 10
+        allele2_delta = 0
+        allele1 = mutate_str(ref_sequence, repeatunit, delta = allele1_delta)
+        allele2 = mutate_str(ref_sequence, repeatunit, delta = allele2_delta)
 
-    # Generate stutter for each allele
+        # Write the true alleles (the basis for the stutter simulation)
+        # XXX need to figure out how to write genotype, not just two alleles?
+        record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref_sequence,
+                    ALT=[vcf.model._Substitution(allele1), vcf.model._Substitution(allele2)],
+                    QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
+                    FORMAT='.', sample_indexes=[], samples=None)
+        vcf_truth.write_record(record)
 
-    # Write true genotype vcf, stutter vcfs and their corresponding probabilities
+        # Calculate stutter probability profile for each allele
+        # Parameters: repeat unit size, repeat length?
+        stutter_deltas = [-3, -2, -1, 0, 1, 2]
+        stutter_probs =  [0.005615487, 0.056154869, 0.168464608, 0.738879858, 0.025269691, 0.005615487]
 
-    vcf_writer = get_vcf_writer(vcf_out)
+        # Generate stutter for each allele
+        for delta, prob in zip(stutter_deltas,stutter_probs):
+            stutter_fname = outfile_base + '.stutter_{0}.vcf'.format(delta)
+            vcf_stutter = get_vcf_writer(stutter_fname)
+            mutatant_allele = mutate_str(ref_sequence, repeatunit, delta = delta)
+            record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref_sequence,
+                        ALT=[vcf.model._Substitution(mutatant_allele)],
+                        QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
+                        FORMAT='.', sample_indexes=[], samples=None)
+            vcf_stutter.write_record(record)
+            # write the filename and corresponding stutter probabily for use in later pipeline stages
+            vcf_probs_writer.write('{0}\t{1}\n'.format(stutter_fname, prob))
 
-    record = vcf.model._Record(CHROM='chr6', POS=16243709, ID='.', REF='T',
-                                ALT=[vcf.model._Substitution('TGCTGCTGCTGCTGCTGCTGCTGCTGCTGCT')],
-                                QUAL='.', FILTER='PASS', INFO={'RU':'GCT', 'RL':29},
-                                FORMAT='.', sample_indexes=[], samples=None)
+        # Write true genotype vcf, stutter vcfs and their corresponding probabilities
+
+
+
     #vcf_writer.write_record(record)
 
 
