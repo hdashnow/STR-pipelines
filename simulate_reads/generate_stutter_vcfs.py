@@ -293,7 +293,7 @@ def main():
     # Hard-coding some probabilities for testing
     # Gymrek, M. (2016). PCR-free library preparation greatly reduces stutter noise at short tandem repeats.
     # Retrieved from http://biorxiv.org/lookup/doi/10.1101/043448
-    #XXX But I'm not sure about these numbers. They don't add up to 1 for 3 and 4 bp repeat units
+    #XXX But I'm not sure about these numbers. They don't add up to 1 for 3 and 4 bp repeat units - not being used currently.
     # probability of stutter occuring:
     prop_of_stutter = {1: 0.17, 2: 0.038, 3: 0.011, 4: 0.0069, 5: 0.0074, 6: 0.014}
     # if stutter occurs, distribution of deltas:
@@ -332,9 +332,9 @@ def main():
         # Calculate stutter probability profile for each allele
         # Parameters: repeat unit size, repeat length?
         deltas1 = [-3, -2, -1, 0, 1, 2]
-        probs1 =  [0.005615487, 0.056154869, 0.168464608, 0.738879858, 0.025269691, 0.005615487]
+        probs1 =  [0.2, 0.3, 0.5, 0.7, 0.4, 0.2]
         deltas2 = [7, 8, 9, 10, 11, 12]
-        probs2 =  [0.005615487, 0.056154869, 0.168464608, 0.738879858, 0.025269691, 0.005615487]
+        probs2 =  [0.2, 0.3, 0.5, 0.7, 0.4, 0.2]
         stutter_deltas,stutter_probs = combine_stutter(deltas1, probs1, deltas2, probs2, rescale_probs = True)
 
         # Generate stutter for each allele
