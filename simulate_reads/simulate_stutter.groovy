@@ -46,7 +46,7 @@ mutate_ref = {
     doc "Generate a version of the reference genome (or subset) with mutations given by the input VCF"
 
         // Set target coverage for this stutter allele
-        branch.coverage = branch.param_map["$input.vcf"] * total_coverage
+        branch.coverage = branch.param_map["$input.vcf"].toDouble() * total_coverage
 
     exec """
         java -Xmx4g -jar $GATK
@@ -69,7 +69,7 @@ generate_reads = {
         def outname = output.prefix[0..-2]
         exec """
             $ART/art_illumina -i $input.fasta -p -na
-                -l 150 -ss HS25 -f $coverage
+                -l 150 -ss HS25 -f $branch.coverage
                 -m 500 -s 50
                 -o $outname
         ""","medium"
