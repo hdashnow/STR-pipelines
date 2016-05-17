@@ -16,6 +16,7 @@ from Bio.Alphabet import generic_dna
 import vcf #PyVCF
 import pysam #note: can be tricky to install, used bioconda channel
 import random
+import pandas as pd
 
 __author__ = 'Harriet Dashnow'
 __credits__ = ['Harriet Dashnow']
@@ -238,6 +239,33 @@ def get_vcf_writer(vcf_outfile):
         vcf_writer = vcf.Writer(open(vcf_outfile, 'w'), vcf_reader)
     return vcf_writer
 
+def combine_stutter(deltas1, probs1, deltas2, probs2, rescale_probs = True):
+    """Combine the stutter distributions from two different alleles to give the stutter distrobutions for an entire genotype.
+
+    Args:
+        deltas1, deltas2 (list):
+        probs1, probs2 (list):
+        rescale_probs (bool): If the individual input probs don't add up to 1, rescale them so they do before combining them.
+
+    Returns:
+        (deltas, probs)
+        deltas (list): Combinded deltas
+        probs (list): Combined probs. Rescaled to sum to 1.
+    """
+    allele1 = pd.DataFrame(data=probs1, index=deltas1, columns=["probs1"])
+    allele2 = pd.DataFrame(data=probs2, index=deltas2, columns=["probs2"])
+
+    both = allele1.join(allele2, how='outer').fillna(0)
+
+    if rescale_probs: # rescale individual allele probs to add to 1
+        both["probs1"] = both["probs1"]/sum(both["probs1"])
+        both["probs2"] = both["probs2"]/sum(both["probs2"])
+
+    combined = both["probs1"] + both["probs2"]
+    combined = combined/sum(combined) # rescale to add to 1
+
+    return list(combined.index), list(combined)
+
 def main():
     # Parse command line arguments
     args = parse_args()
@@ -303,8 +331,11 @@ def main():
 
         # Calculate stutter probability profile for each allele
         # Parameters: repeat unit size, repeat length?
-        stutter_deltas = [-3, -2, -1, 0, 1, 2]
-        stutter_probs =  [0.005615487, 0.056154869, 0.168464608, 0.738879858, 0.025269691, 0.005615487]
+        deltas1 = [-3, -2, -1, 0, 1, 2]
+        probs1 =  [0.005615487, 0.056154869, 0.168464608, 0.738879858, 0.025269691, 0.005615487]
+        deltas2 = [7, 8, 9, 10, 11, 12]
+        probs2 =  [0.005615487, 0.056154869, 0.168464608, 0.738879858, 0.025269691, 0.005615487]
+        stutter_deltas,stutter_probs = combine_stutter(deltas1, probs1, deltas2, probs2, rescale_probs = True)
 
         # Generate stutter for each allele
         for delta, prob in zip(stutter_deltas,stutter_probs):
