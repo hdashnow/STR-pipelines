@@ -3,7 +3,8 @@
 ART='/vlsci/VR0320/hdashnow/art_bin_ChocolateCherryCake'
 REF='/vlsci/VR0002/shared/Reference_Files/GATK_bundle_Refs/hg19/ucsc.hg19.fasta'
 GATK="/usr/local/gatk/3.4-46/GenomeAnalysisTK.jar"
-total_coverage = 10
+TOOLS='/vlsci/VR0320/hdashnow/git/STR-pipelines/simulate_reads'
+total_coverage = 100
 
 def get_fname(path) {
     x = path.split("/")[-1]
@@ -34,7 +35,7 @@ generate_vcf = {
 
     produce("*.vcf") {
         def all_params = capture """
-            python generate_stutter_vcfs.py --ref ~/Documents/reference-data/ucsc.hg19.fasta --bed $input.bed --output $output.prefix
+            python $TOOLS/generate_stutter_vcfs.py --ref $REF --bed $input.bed --output $output.prefix
     """
     branch.param_map = parse_parameters(all_params)
     }
@@ -64,7 +65,7 @@ mutate_ref = {
 generate_reads = {
 
     def fastaname = get_fname(REF)
-    produce('$fastaname_${input.prefix}_L001_R1.fq', '$fastaname_${input.prefix}_L001_R2.fq') {
+    produce(fastaname + '_' + input.fasta.prefix + '_L001_R1.fq', fastaname + '_' + input.fasta.prefix + '_L001_R2.fq') {
         def outname = output.prefix[0..-2]
         exec """
             $ART/art_illumina -i $input.fasta -p -na
