@@ -33,9 +33,11 @@ def parse_parameters(all_parameters) {
 generate_vcf = {
     doc "Generate a VCF of STR mutations and stutter, along with their probabilities"
 
-    produce("*.vcf") {
+    def bedname = get_fname(input.bed)
+
+    produce(bedname.prefix + ".truth.vcf", "*.vcf") {
         def all_params = capture """
-            python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix
+            python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix
     """
     branch.param_map = parse_parameters(all_params)
     }
