@@ -124,20 +124,25 @@ def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
         bed_dict (dict): existing genomic regions to include in the output.
             format: bed_dict[unique_id] = {'chr':str, 'start':int, 'stop':int, 'name':None}
         position_base (int): 0 or 1. The starting position the genomic regions
-            are measured relative to. If 1, all postions will be converted to 0.
+            are measured relative to in the input file. If 0, all postions will
+            be converted to 1. Assumed to be 1 by default.
 
     Returns:
         dict: bed_dict[unique_id] = {'chr':str, 'start':int, 'stop':int, 'name':None}
-            Genomic regions, in base-0.
+            Genomic regions, in base-1.
     """
     with open(bedfilename) as bedfile:
+        if position_base == 0:
+            base_shift = 1
+        else:
+            base_shift = 0
         for bedfile_line in bedfile:
             if bedfile_line.startswith('#'):
                 continue
             split_line = bedfile_line.split()
             ref_chr = split_line[0]
-            ref_start = int(split_line[1]) - position_base
-            ref_stop = int(split_line[2]) - position_base
+            ref_start = int(split_line[1]) + base_shift
+            ref_stop = int(split_line[2]) + base_shift
             # If repeat start and end are the wrong way around, swap them
             if ref_stop < ref_start:
                 ref_start = int(split_line[2]) - position_base
@@ -309,15 +314,14 @@ def main():
     fastafile = pysam.Fastafile(args.ref)
     for region in bed_dict:
         chrom = bed_dict[region]['chr']
-        start = bed_dict[region]['start']
+        start = bed_dict[region]['start'] # These positions are in base-1
         stop = bed_dict[region]['stop']
         name = bed_dict[region]['name']
         repeatunit = bed_dict[region]['repeatunit']
-        ref_sequence = fastafile.fetch(chrom, start, stop).upper()  # note zero-based indexing c.f. 1-based indexing in vcf
-        # XXX need to switch back to 1-based indexing when writing to the vcf! Make a function for this?
+        # note fetch step requires zero-based indexing c.f. 1-based indexing in vcf and bed dict
+        ref_sequence = fastafile.fetch(chrom, start - 1, stop - 1).upper()
 
         # Write a bed file of the bases around the given region
-        #XXX Note, this is writing out the bed file in base 0, change to base 1 (or give option to)? Give info in help about this?
         bed_out = '{}_{}.bed'.format(outfile_base,region)
         with open(bed_out, "w") as f:
             f.write('{0}\t{1}\t{2}\t{3}\n'.format(chrom, start - args.flank, stop + args.flank, name))
@@ -360,15 +364,6 @@ def main():
             vcf_stutter.write_record(record)
             # write the filename and corresponding stutter probability for use in later pipeline stages
             vcf_probs_writer.write('{0}\t{1}\t{2}\n'.format(stutter_fname, prob, bed_out))
-
-        # Write true genotype vcf, stutter vcfs and their corresponding probabilities
-
-
-
-    #vcf_writer.write_record(record)
-
-
-
 
 if __name__ == '__main__':
     main()
