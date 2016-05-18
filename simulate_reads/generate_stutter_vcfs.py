@@ -315,6 +315,12 @@ def main():
         repeatunit = bed_dict[region]['repeatunit']
         ref_sequence = fastafile.fetch(chrom, start, stop).upper()  # note zero-based indexing c.f. 1-based indexing in vcf
 
+        # Write a bed file of the bases around the given region
+        #XXX Note, this is writing out the bed file in base 0, change to base 1 (or give option to)? Give info in help about this?
+        bed_out = '{}_{}.bed'.format(outfile_base,region)
+        with open(bed_out, "w") as f:
+            f.write('{0}\t{1}\t{2}\t{3}\n'.format(chrom, start - args.flank, stop + args.flank, name))
+
         #delta = 1 #XXX need to generate delta, or get from input
 
         # Generate a genotype for these - totally random, or heterozygous pathogenic?
@@ -349,8 +355,8 @@ def main():
                         QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
                         FORMAT='.', sample_indexes=[], samples=None)
             vcf_stutter.write_record(record)
-            # write the filename and corresponding stutter probabily for use in later pipeline stages
-            vcf_probs_writer.write('{0}\t{1}\n'.format(stutter_fname, prob))
+            # write the filename and corresponding stutter probability for use in later pipeline stages
+            vcf_probs_writer.write('{0}\t{1}\t{2}\n'.format(stutter_fname, prob, bed_out))
 
         # Write true genotype vcf, stutter vcfs and their corresponding probabilities
 

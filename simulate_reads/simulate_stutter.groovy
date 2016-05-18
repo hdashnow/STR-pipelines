@@ -21,7 +21,7 @@ def parse_parameters(all_parameters) {
 
     lines.each {
         row_list = it.split()
-        param_map[row_list[0]] = row_list[1]
+        param_map[row_list[0]] = ['probability':row_list[1], 'bedfile':row_list[2]]
     }
     return(param_map)
 }
@@ -46,14 +46,15 @@ mutate_ref = {
     doc "Generate a version of the reference genome (or subset) with mutations given by the input VCF"
 
         // Set target coverage for this stutter allele
-        branch.coverage = branch.param_map["$input.vcf"].toDouble() * total_coverage
+        branch.coverage = branch.param_map["$input.vcf"]["probability"].toDouble() * total_coverage
+        branch.bedfile = branch.param_map["$input.vcf"]["bedfile"]
 
     exec """
         java -Xmx4g -jar $GATK
             -T FastaAlternateReferenceMaker
             -R $REF
             -o $output.fasta
-            -L /vlsci/VR0320/hdashnow/git/STR-pipelines/simulate_reads/ATXN1.bed
+            -L $branch.bedfile
             -V $input.vcf
     """
 }
