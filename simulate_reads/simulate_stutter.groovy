@@ -125,7 +125,7 @@ align_bwa = {
             bwa mem -M -t $threads
             -R "@RG\\tID:${sample}\\tPL:$PLATFORM\\tPU:1\\tLB:${sample}\\tSM:${sample}"
             $REF $input1.gz $input2.gz |
-            samtools view -bSuh - | samtools sort - $output.prefix
+            samtools view -bSuh - | samtools sort -o $output.bam -
         """, "bwamem"
     }
 }
