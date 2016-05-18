@@ -77,9 +77,9 @@ generate_reads = {
     }
 }
 
-gzip = {
+combine_gzip = {
     transform('.fq') to('.fastq.gz') {
-        exec "gzip -c $input.fq > $output.gz","medium"
+        exec "cat $inputs.fq | gzip -c > $output.gz","medium"
     }
 }
 
@@ -167,8 +167,8 @@ run {
         mutate_ref + generate_reads
     ] +
 
-    "%.fq" * [
-        gzip
+    "*stutter*_L001_R%.fq" * [
+        combine_gzip
     ] +
 
     '%_R*.fastq.gz' * [
