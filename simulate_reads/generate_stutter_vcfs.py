@@ -314,6 +314,7 @@ def main():
         name = bed_dict[region]['name']
         repeatunit = bed_dict[region]['repeatunit']
         ref_sequence = fastafile.fetch(chrom, start, stop).upper()  # note zero-based indexing c.f. 1-based indexing in vcf
+        # XXX need to switch back to 1-based indexing when writing to the vcf! Make a function for this?
 
         # Write a bed file of the bases around the given region
         #XXX Note, this is writing out the bed file in base 0, change to base 1 (or give option to)? Give info in help about this?
@@ -331,6 +332,7 @@ def main():
 
         # Write the true alleles (the basis for the stutter simulation)
         # XXX need to figure out how to write genotype, not just two alleles?
+        # XXX also shouldn't include ALT for allele if same as ref - should be in genotype instead
         record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref_sequence,
                     ALT=[vcf.model._Substitution(allele1), vcf.model._Substitution(allele2)],
                     QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
@@ -345,15 +347,21 @@ def main():
         probs2 =  [0.2, 0.3, 0.5, 0.7, 0.4, 0.2]
         stutter_deltas,stutter_probs = combine_stutter(deltas1, probs1, deltas2, probs2, rescale_probs = True)
 
-        # Generate stutter for each allele
+        # Generate stutter alleles
         for delta, prob in zip(stutter_deltas,stutter_probs):
             stutter_fname = outfile_base + '.stutter_{0}.vcf'.format(delta)
             vcf_stutter = get_vcf_writer(stutter_fname)
             mutatant_allele = mutate_str(ref_sequence, repeatunit, delta = delta)
-            record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref_sequence,
-                        ALT=[vcf.model._Substitution(mutatant_allele)],
-                        QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
-                        FORMAT='.', sample_indexes=[], samples=None)
+            if delta == 0:
+                record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref_sequence,
+                            ALT=[],
+                            QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
+                            FORMAT='.', sample_indexes=[], samples=None)
+            else:
+                record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref_sequence,
+                            ALT=[vcf.model._Substitution(mutatant_allele)],
+                            QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
+                            FORMAT='.', sample_indexes=[], samples=None)
             vcf_stutter.write_record(record)
             # write the filename and corresponding stutter probability for use in later pipeline stages
             vcf_probs_writer.write('{0}\t{1}\t{2}\n'.format(stutter_fname, prob, bed_out))
