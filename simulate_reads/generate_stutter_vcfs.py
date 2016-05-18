@@ -352,12 +352,7 @@ def main():
             stutter_fname = outfile_base + '.stutter_{0}.vcf'.format(delta)
             vcf_stutter = get_vcf_writer(stutter_fname)
             mutatant_allele = mutate_str(ref_sequence, repeatunit, delta = delta)
-            if delta == 0:
-                record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref_sequence,
-                            ALT=[],
-                            QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
-                            FORMAT='.', sample_indexes=[], samples=None)
-            else:
+            if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
                 record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref_sequence,
                             ALT=[vcf.model._Substitution(mutatant_allele)],
                             QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
