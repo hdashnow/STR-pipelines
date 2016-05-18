@@ -35,7 +35,7 @@ generate_vcf = {
 
     produce("*.vcf") {
         def all_params = capture """
-            python $TOOLS/generate_stutter_vcfs.py --ref $REF --bed $input.bed --output $output.prefix
+            python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix
     """
     branch.param_map = parse_parameters(all_params)
     }

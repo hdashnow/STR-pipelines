@@ -26,28 +26,30 @@ __email__ = 'h.dashnow@gmail.com'
 
 def parse_args():
     """Parse the input arguments, use '-h' for help"""
-    parser = ArgumentParser(description='Produce VCFs and corresponding stutter frequencies for a given set of STR loci')
+    parser = ArgumentParser(description=('Produce VCFs and corresponding stutter'
+    ' frequencies for a given set of STR loci. Also provides a bed file for each'
+    ' locus defining a region around that locus.'))
     parser.add_argument(
-        '--ref', type=str, required=True,
+        'ref', type=str, #XXX switch to positional argument?
         help='Fasta reference')
     parser.add_argument(
-        '--bed', type=str, required=True,
+        'bed', type=str, #XXX switch to positional argument?
         help='bed file containing genomic locations of STRs and their repeat units. Genomic locations should be relative to the fasta reference.')
     parser.add_argument(
         '--output', type=str, required=False,
-        help='Base name for output files')
+        help='Base name for output files, including vcfs and bed files.') #XXX should have a default for this?
     parser.add_argument(
         '--truth', type=str, required=False,
-        help='File name for output vcf of true genotypes. Default: output base name .truth.vcf')
+        help='File name for output vcf of true genotypes for all loci. (default: output base name .truth.vcf)')
     parser.add_argument(
         '--stutter_output', type=str, required=False,
-        help='File giving names of stutter vcf files with corresponding stutter probabilities. Default: stdout')
+        help='File giving names of stutter vcf files with corresponding stutter probabilities. (default: stdout)')
     parser.add_argument(
         '--base0', action='store_true',
         help='Genomic positions in bed file and region are 0-based. Otherwise assumed to be 1-based.')
     parser.add_argument(
-        '--flank', type=int, default=100000,
-        help='Number of flanking base to include in the output bed file on either side of the STR.')
+        '--flank', type=int, default=10000,
+        help='Number of flanking base to include in the output bed file on either side of the STR. (default: %(default)s)')
     parser.add_argument(
         '--seed', required=False,
         help='Random seed (can be any hashible input).')
