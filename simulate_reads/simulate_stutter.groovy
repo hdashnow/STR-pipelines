@@ -80,7 +80,7 @@ generate_reads = {
 }
 
 combine_gzip = {
-    from('.fq') produce(input.fq.prefix + '.fastq.gz') {
+    from('*.fq') produce(input.fq.prefix + '.fastq.gz') {
         exec "cat $inputs.fq | gzip -c > $output.gz","medium"
     }
 }
