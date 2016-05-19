@@ -157,8 +157,8 @@ def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
                 sys.stderr.write(bedfile_line)
             if len(split_line) > 3:
                 name = split_line[3] #XXX Need to parse out STR repeat unit here
+                split_name = name.split('_')
                 if len(split_name) >= 2:
-                    split_name = name.split('_')
                     repeatunit = split_name[0]
                     if is_dna(repeatunit):
                         repeatunit = repeatunit.upper()
@@ -351,6 +351,7 @@ def main():
         stop = bed_dict[region]['stop']
         name = bed_dict[region]['name']
         repeatunit = bed_dict[region]['repeatunit']
+        deltas = bed_dict[region]['deltas']
         # note fetch step requires zero-based indexing c.f. 1-based indexing in vcf and bed dict
         ref_sequence = fastafile.fetch(chrom, start - 1, stop - 1).upper()
 
@@ -362,8 +363,13 @@ def main():
         #delta = 1 #XXX need to generate delta, or get from input
 
         # Generate a genotype for these - totally random, or heterozygous pathogenic?
-        allele1_delta = 50
-        allele2_delta = -3
+        if deltas:
+            allele1_delta = deltas[0]
+            allele2_delta = deltas[1]
+        else:
+            # XXX make this some kind of random number generator
+            allele1_delta = 10
+            allele2_delta = 0
         allele1 = mutate_str(ref_sequence, repeatunit, delta = allele1_delta)
         allele2 = mutate_str(ref_sequence, repeatunit, delta = allele2_delta)
 
