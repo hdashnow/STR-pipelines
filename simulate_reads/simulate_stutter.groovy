@@ -165,17 +165,17 @@ run {
 
     generate_vcf +
 
-    "%stutter_%.vcf" * [
+    "%.stutter_%.vcf" * [
         mutate_ref + generate_reads
     ] +
 
-    "*stutter*_L001_R%.fq" * [
+    "*.stutter_*_R%.fq" * [
         combine_gzip
     ] +
 
     '%_R*.fastq.gz' * [
         set_sample_info +
         align_bwa + index_bam +
-        RealignerTargetCreator + IndelRealigner
+//        RealignerTargetCreator + IndelRealigner
     ]
 }
