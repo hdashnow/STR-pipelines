@@ -175,7 +175,7 @@ run {
 
     '%_R*.fastq.gz' * [
         set_sample_info +
-        align_bwa + index_bam +
+        align_bwa + index_bam //+
 //        RealignerTargetCreator + IndelRealigner
     ]
 }
