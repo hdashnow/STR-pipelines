@@ -21,7 +21,7 @@ def parse_parameters(all_parameters) {
 
     lines.each {
         row_list = it.split()
-        param_map[row_list[0]] = ['probability':row_list[1], 'bedfile':row_list[2]]
+        param_map[row_list[0]] = ['probability':row_list[1], 'bedfile':row_list[2], 'delta':row_list[3]]
     }
     return(param_map)
 }
@@ -29,7 +29,6 @@ def parse_parameters(all_parameters) {
 /////////////////////////////
 // Produce mutated fasta file
 
-//XXX TO DO
 generate_vcf = {
     doc "Generate a VCF of STR mutations and stutter, along with their probabilities"
 
@@ -40,6 +39,7 @@ generate_vcf = {
             python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix
     """
     branch.param_map = parse_parameters(all_params)
+    println(branch.param_map)
     }
 }
 
@@ -50,7 +50,7 @@ mutate_ref = {
         // Set target coverage for this stutter allele
         branch.coverage = branch.param_map["$input.vcf"]["probability"].toDouble() * total_coverage
         branch.bedfile = branch.param_map["$input.vcf"]["bedfile"]
-
+        branch.delta = branch.param_map["$input.vcf"]["delta"]
     exec """
         java -Xmx4g -jar $GATK
             -T FastaAlternateReferenceMaker
@@ -66,7 +66,7 @@ mutate_ref = {
 // Generate reads
 
 generate_reads = {
-
+    def readname = 'stutter_' + branch.delta + '_'
     def fastaname = get_fname(REF)
     produce(fastaname + '_' + input.fasta.prefix + '_L001_R1.fq', fastaname + '_' + input.fasta.prefix + '_L001_R2.fq') {
         def outname = output.prefix[0..-2]
@@ -74,6 +74,7 @@ generate_reads = {
             $ART/art_illumina -i $input.fasta -p -na
                 -l 150 -ss HS25 -f $branch.coverage
                 -m 500 -s 50
+                --id $readname 
                 -o $outname
         ""","medium"
     }

@@ -362,7 +362,7 @@ def main():
                             FORMAT='.', sample_indexes=[], samples=None)
             vcf_stutter.write_record(record)
             # write the filename and corresponding stutter probability for use in later pipeline stages
-            vcf_probs_writer.write('{0}\t{1}\t{2}\n'.format(stutter_fname, prob, bed_out))
+            vcf_probs_writer.write('{0}\t{1}\t{2}\t{3}\n'.format(stutter_fname, prob, bed_out, delta))
 
 if __name__ == '__main__':
     main()
