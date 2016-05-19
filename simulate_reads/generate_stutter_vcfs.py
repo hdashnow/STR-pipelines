@@ -120,7 +120,11 @@ def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
     """Parse regions from bed file. Ignore lines starting with #.
 
     Args:
-        bedfilename (str): bed format text file in in format: chr start stop [name] ... (additional columns ignored)
+        bedfilename (str): bed format text file in in
+        format: chr start stop name [...] (additional columns ignored)
+        where name is in the format repeatunit_genotype, e.g.
+        CAG_-2/1 (CAG repeat unit, 2 CAG deleation/1 CAG insertion)
+        AT_0/3 (AT repeat unit, same as reference/3 AT insertion)
         bed_dict (dict): existing genomic regions to include in the output.
             format: bed_dict[unique_id] = {'chr':str, 'start':int, 'stop':int, 'name':None}
         position_base (int): 0 or 1. The starting position the genomic regions
@@ -128,7 +132,9 @@ def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
             be converted to 1. Assumed to be 1 by default.
 
     Returns:
-        dict: bed_dict[unique_id] = {'chr':str, 'start':int, 'stop':int, 'name':None}
+        dict: bed_dict[unique_id] = {'chr':str, 'start':int, 'stop':int,
+                                    'name':str or None, 'repeatunit':str or None,
+                                    'deltas': [int, int] or None}
             Genomic regions, in base-1.
     """
     with open(bedfilename) as bedfile:
@@ -151,16 +157,24 @@ def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
                 sys.stderr.write(bedfile_line)
             if len(split_line) > 3:
                 name = split_line[3] #XXX Need to parse out STR repeat unit here
-                if is_dna(name):
-                    repeatunit = name.upper()
+                if len(split_name) >= 2:
+                    split_name = name.split('_')
+                    repeatunit = split_name[0]
+                    if is_dna(repeatunit):
+                        repeatunit = repeatunit.upper()
+                    genotype = split_name[1].split('/')
+                    if len(genotype) == 2:
+                        deltas = [int(x) for x in genotype]
             else:
                 name = None
                 repeatunit = None
+                deltas = None
             unique_id = '{0}:{1}-{2}'.format(ref_chr,ref_start,ref_stop)
             if unique_id not in bed_dict:
                 bed_dict[unique_id] = {'chr':ref_chr, 'start':ref_start,
                                         'stop':ref_stop, 'name':name,
-                                        'repeatunit':repeatunit}
+                                        'repeatunit':repeatunit,
+                                        'deltas': deltas}
     return bed_dict
 
 def mutate_str(ref_sequence, repeatunit, delta):
