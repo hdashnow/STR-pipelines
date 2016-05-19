@@ -177,7 +177,7 @@ def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
                                         'deltas': deltas}
     return bed_dict
 
-def mutate_str(ref_sequence, repeatunit, delta):
+def mutate_str(ref_sequence, repeatunit, delta, random=False):
     """Mutate a DNA sequence containing a microsatellite by inserting or
     deleating repeat units of that microsatellite.
 
@@ -188,6 +188,8 @@ def mutate_str(ref_sequence, repeatunit, delta):
         delta (int): Number of repeat units to add/remove. Positive if creating
             an insertion, negative if a deletion. 0 will return the input
             sequence.
+        random (bool): Insert/delete repeat units from a random position.
+        If False, insert in the left-most position.
 
     Returns:
         str: The mutated DNA sequence.
@@ -203,7 +205,11 @@ def mutate_str(ref_sequence, repeatunit, delta):
     if delta > 0: # Insertion
         # select a position at random, sampling without replacement
         i_max = len(ref_sequence)-repeatunitlen
-        for i in random.sample(range(i_max), i_max):
+        if random:
+            i_range = random.sample(range(i_max), i_max)
+        else:
+            i_range = range(i_max)
+        for i in i_range:
             # Check that there is a repeat unit to the right of this position
             bases_to_right = ref_sequence[i:i+repeatunitlen]
             if normalise_str(bases_to_right) == normalise_str(repeatunit):
@@ -224,7 +230,11 @@ def mutate_str(ref_sequence, repeatunit, delta):
         if deletion_size > len(ref_sequence):
             raise ValueError("Deletion of {0} {1} repeat units is larger than the input sequence {2}".format(-delta, repeatunit, ref_sequence))
         i_max = len(ref_sequence) - deletion_size + 1
-        for i in random.sample(range(i_max), i_max):
+        if random:
+            i_range = random.sample(range(i_max), i_max)
+        else:
+            i_range = range(i_max)
+        for i in i_range:
             bases_to_right = ref_sequence[i:i+deletion_size]
             # Check if the first few bases contain the repeat unit (or a transposition of it)
             for j in range(len(bases_to_right)):
