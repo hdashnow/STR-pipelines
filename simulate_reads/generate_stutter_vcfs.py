@@ -227,6 +227,25 @@ def mutate_str(ref_sequence, repeatunit, delta):
                     break
         raise ValueError("There were not {0} copies of {1} repeat unit available to be deleted in {2}.".format(-delta, repeatunit, ref_sequence))
 
+def trim_indel(ref, alt):
+    """Generate the shortest representation of an indel my removing the rightmost bases.
+    XXX Currently only working with a single alt, should be generalised for multiple.
+
+    Args:
+        ref (str): The version of the sequence in the reference genome.
+        alt (str): Alternative version of the sequence caused by an insertion or
+        deletion.
+
+    Returns:
+        (ref_normalised str, alt_normalised str)
+    """
+    if min(len(ref), len(alt)) <= 1:
+        return ref, alt
+    for i in range(1, min(len(ref), len(alt))):
+        if ref[-i] != alt[-i]:
+            return ref[:-i], alt[:-i]
+    return ref[:-i], alt[:-i]
+
 def get_vcf_writer(vcf_outfile):
     """Generate a vcf writer object.
     Writes a template vcf containing header info (can be deleted afterwards?)"""
@@ -356,11 +375,12 @@ def main():
             vcf_stutter = get_vcf_writer(stutter_fname)
             mutatant_allele = mutate_str(ref_sequence, repeatunit, delta = delta)
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
-                record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref_sequence,
-                            ALT=[vcf.model._Substitution(mutatant_allele)],
+                ref, alt = trim_indel(ref_sequence, mutatant_allele)
+                record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref,
+                            ALT=[vcf.model._Substitution(alt)],
                             QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
                             FORMAT='.', sample_indexes=[], samples=None)
-            vcf_stutter.write_record(record)
+                vcf_stutter.write_record(record)
             # write the filename and corresponding stutter probability for use in later pipeline stages
             vcf_probs_writer.write('{0}\t{1}\t{2}\t{3}\n'.format(stutter_fname, prob, bed_out, delta))
 
