@@ -367,7 +367,7 @@ def main():
         ref_sequence = fastafile.fetch(chrom, start - 1, stop - 1).upper()
 
         # Write a bed file of the bases around the given region
-        bed_out = '{}_{}.bed'.format(outfile_base,region)
+        bed_out = '{}.{}.bed'.format(outfile_base,region)
         with open(bed_out, "w") as f:
             f.write('{0}\t{1}\t{2}\t{3}\n'.format(chrom, start - args.flank, stop + args.flank, name))
 
@@ -402,7 +402,7 @@ def main():
 
         # Generate stutter alleles
         for delta, prob in zip(stutter_deltas,stutter_probs):
-            stutter_fname = outfile_base + '.stutter_{0}.vcf'.format(delta)
+            stutter_fname = outfile_base + '.{0}.stutter_{1}.vcf'.format(region, delta)
             vcf_stutter = get_vcf_writer(stutter_fname)
             mutatant_allele = mutate_str(ref_sequence, repeatunit, delta = delta)
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
