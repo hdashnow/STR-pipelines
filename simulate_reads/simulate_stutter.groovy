@@ -16,7 +16,6 @@ def get_fname(path) {
 def parse_parameters(all_parameters) {
 
     def param_map = [:]
-    println(all_parameters)
     lines = all_parameters.readLines()
 
     lines.each {
@@ -39,7 +38,6 @@ generate_vcf = {
             python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix
     """
     branch.param_map = parse_parameters(all_params)
-    println(branch.param_map)
     }
 }
 
