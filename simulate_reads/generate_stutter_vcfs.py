@@ -256,8 +256,8 @@ def trim_indel(ref, alt):
     if min(len(ref), len(alt)) <= 1:
         return ref, alt
     for i in range(1, min(len(ref), len(alt))):
-        if ref[-i] != alt[-i]:
-            return ref[:-i], alt[:-i]
+        if ref[-i] != alt[-i]: # Check if the rightmost bases is different
+            return ref[:-i+1], alt[:-i+1]
     return ref[:-i], alt[:-i]
 
 def get_vcf_writer(vcf_outfile):
