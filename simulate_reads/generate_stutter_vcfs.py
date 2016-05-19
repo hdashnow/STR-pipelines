@@ -329,8 +329,8 @@ def main():
         #delta = 1 #XXX need to generate delta, or get from input
 
         # Generate a genotype for these - totally random, or heterozygous pathogenic?
-        allele1_delta = 10
-        allele2_delta = 0
+        allele1_delta = 50
+        allele2_delta = -3
         allele1 = mutate_str(ref_sequence, repeatunit, delta = allele1_delta)
         allele2 = mutate_str(ref_sequence, repeatunit, delta = allele2_delta)
 
@@ -345,10 +345,9 @@ def main():
 
         # Calculate stutter probability profile for each allele
         # Parameters: repeat unit size, repeat length?
-        deltas1 = [-3, -2, -1, 0, 1, 2]
-        probs1 =  [0.2, 0.3, 0.5, 0.7, 0.4, 0.2]
-        deltas2 = [7, 8, 9, 10, 11, 12]
-        probs2 =  [0.2, 0.3, 0.5, 0.7, 0.4, 0.2]
+        deltas1 = range(allele1_delta - 3, allele1_delta + 3)
+        deltas2 = range(allele2_delta - 3, allele2_delta + 3)
+        probs1 = probs2 =  [0.2, 0.3, 0.5, 0.7, 0.4, 0.2]
         stutter_deltas,stutter_probs = combine_stutter(deltas1, probs1, deltas2, probs2, rescale_probs = True)
 
         # Generate stutter alleles
