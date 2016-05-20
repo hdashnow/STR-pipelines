@@ -172,7 +172,7 @@ def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
                 name = None
                 repeatunit = None
                 deltas = None
-            unique_id = '{0}:{1}-{2}'.format(ref_chr,ref_start,ref_stop)
+            unique_id = '{0}-{1}-{2}'.format(ref_chr,ref_start,ref_stop)
             if unique_id not in bed_dict:
                 bed_dict[unique_id] = {'chr':ref_chr, 'start':ref_start,
                                         'stop':ref_stop, 'name':name,
@@ -416,8 +416,6 @@ def main():
                     QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
                     FORMAT='.', sample_indexes=[], samples=None)
         vcf_truth.write_record(record)
-
-
 
         # Generate stutter alleles
         for delta, prob in zip(stutter_deltas,stutter_probs):
