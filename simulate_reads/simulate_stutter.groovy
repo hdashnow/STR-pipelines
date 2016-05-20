@@ -4,6 +4,7 @@ ART='/vlsci/VR0320/hdashnow/art_bin_ChocolateCherryCake'
 REF='/vlsci/VR0002/shared/Reference_Files/GATK_bundle_Refs/hg19/ucsc.hg19.fasta'
 GATK="/usr/local/gatk/3.4-46/GenomeAnalysisTK.jar"
 TOOLS='/vlsci/VR0320/hdashnow/git/STR-pipelines/simulate_reads'
+STUTTER='/vlsci/VR0320/hdashnow/git/STR-pipelines/simulate_reads/stutter_model.csv'
 total_coverage = 100
 
 def get_fname(path) {
@@ -35,7 +36,8 @@ generate_vcf = {
 
     produce(bedname.prefix + ".truth.vcf", "*.vcf") {
         def all_params = capture """
-            python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix
+            python $TOOLS/generate_stutter_vcfs.py $REF $input.bed 
+            --output $output.prefix.prefix --stutter $STUTTER
     """
     branch.param_map = parse_parameters(all_params)
     }
