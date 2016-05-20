@@ -30,11 +30,14 @@ def parse_args():
     ' frequencies for a given set of STR loci. Also provides a bed file for each'
     ' locus defining a region around that locus.'))
     parser.add_argument(
-        'ref', type=str, #XXX switch to positional argument?
+        'ref', type=str,
         help='Fasta reference')
     parser.add_argument(
-        'bed', type=str, #XXX switch to positional argument?
+        'bed', type=str,
         help='bed file containing genomic locations of STRs and their repeat units. Genomic locations should be relative to the fasta reference.')
+    parser.add_argument(
+        '--stutter', type=str, required=False,
+        help='csv file containing stutter models.') #XXX need to describe this properly
     parser.add_argument(
         '--output', type=str, required=False,
         help='Base name for output files, including vcfs and bed files.') #XXX should have a default for this?
@@ -176,6 +179,23 @@ def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
                                         'repeatunit':repeatunit,
                                         'deltas': deltas}
     return bed_dict
+
+def parse_stutter(filename):
+    """Parse a csv file of microsatellite stutter frequencies. The first column
+    should contain the repeat unit length (no header needed), the remaining
+    columns should be named according to the deltas (number of repeat units
+    added/deleted e.g. -1 means 1 repeat unit deleated). The values are the
+    frequencies of each of these stutter variants.
+
+    Args:
+        filename (str): csv file
+
+    Returns:
+        pandas.DataFrame: Column names are deltas, rows are repeat unit lengths.
+    """
+    with open(filename, 'rt') as f:
+        data_table = pd.read_csv(f, index_col=0)
+    return(data_table)
 
 def mutate_str(ref_sequence, repeatunit, delta, random=False):
     """Mutate a DNA sequence containing a microsatellite by inserting or
@@ -322,6 +342,11 @@ def main():
     args = parse_args()
     outfile_base = args.output
 
+    if args.stutter:
+        stutterDF = parse_stutter(args.stutter)
+    else:
+        stutterDF = parse_stutter('stutter_model.csv') #XXX This requires that I know where this file is. so maybe refer to it relative to the location of this script?
+
     if args.truth:
         truth_fname = args.truth
     else:
@@ -340,17 +365,6 @@ def main():
 
     if args.seed:
         random.seed(args.seed)
-
-    # Hard-coding some probabilities for testing
-    # Gymrek, M. (2016). PCR-free library preparation greatly reduces stutter noise at short tandem repeats.
-    # Retrieved from http://biorxiv.org/lookup/doi/10.1101/043448
-    #XXX But I'm not sure about these numbers. They don't add up to 1 for 3 and 4 bp repeat units - not being used currently.
-    # probability of stutter occuring:
-    prop_of_stutter = {1: 0.17, 2: 0.038, 3: 0.011, 4: 0.0069, 5: 0.0074, 6: 0.014}
-    # if stutter occurs, distribution of deltas:
-    RU2_stutter = [[-3, -2, -1, 1, 2], [0.02, 0.2, 0.6, 0.09, 0.02]]
-    RU3_stutter = [[-3, -2, -1, 1, 2], [0.01, 0.1, 0.45, 0.05, 0.01]]
-    RU4_stutter = [[-2, -1, 1, 2], [0.05, 0.34, 0.04, 0.005]]
 
     # Parse STR regions that need to be simulated
     bed_dict = parse_bed(args.bed, position_base)
@@ -384,6 +398,16 @@ def main():
         allele1 = mutate_str(ref_sequence, repeatunit, delta = allele1_delta)
         allele2 = mutate_str(ref_sequence, repeatunit, delta = allele2_delta)
 
+        # Get stutter from stutterDF based on the repeatunit length
+        probs1 = stutterDF.iloc[len(repeatunit)].values
+        probs2 = stutterDF.iloc[len(repeatunit)].values
+        deltas1 = stutterDF.columns.values.astype(int) + allele1_delta
+        deltas2 = stutterDF.columns.values.astype(int) + allele2_delta
+        stutter_deltas,stutter_probs = combine_stutter(deltas1, probs1, deltas2, probs2, rescale_probs = True)
+        # Possible extension:
+        # Calculate stutter probability profile for each allele using a forumlar instead of observed data
+        # Parameters: repeat unit size, repeat length?
+
         # Write the true alleles (the basis for the stutter simulation)
         # XXX need to figure out how to write genotype, not just two alleles?
         # XXX also shouldn't include ALT for allele if same as ref - should be in genotype instead
@@ -393,12 +417,7 @@ def main():
                     FORMAT='.', sample_indexes=[], samples=None)
         vcf_truth.write_record(record)
 
-        # Calculate stutter probability profile for each allele
-        # Parameters: repeat unit size, repeat length?
-        deltas1 = range(allele1_delta - 3, allele1_delta + 3)
-        deltas2 = range(allele2_delta - 3, allele2_delta + 3)
-        probs1 = probs2 =  [0.2, 0.3, 0.5, 0.7, 0.4, 0.2]
-        stutter_deltas,stutter_probs = combine_stutter(deltas1, probs1, deltas2, probs2, rescale_probs = True)
+
 
         # Generate stutter alleles
         for delta, prob in zip(stutter_deltas,stutter_probs):
