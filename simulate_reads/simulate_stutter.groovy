@@ -34,11 +34,11 @@ generate_vcf = {
 
     def bedname = get_fname(input.bed)
 
-    produce(bedname.prefix + ".truth.vcf", "*.vcf") {
-        def all_params = capture """
-            python $TOOLS/generate_stutter_vcfs.py $REF $input.bed 
-            --output $output.prefix.prefix --stutter $STUTTER
+    produce(bedname.prefix + ".truth.vcf", "*.vcf", bedname.prefix + ".txt") {
+        exec """
+            python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix --stutter $STUTTER > $output.txt
     """
+    File all_params = new File( output.txt )
     branch.param_map = parse_parameters(all_params)
     }
 }
