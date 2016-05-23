@@ -146,7 +146,7 @@ def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
         else:
             base_shift = 0
         for bedfile_line in bedfile:
-            if bedfile_line.startswith('#'):
+            if bedfile_line.startswith('#') or bedfile_line == '\n':
                 continue
             split_line = bedfile_line.split()
             ref_chr = split_line[0]
