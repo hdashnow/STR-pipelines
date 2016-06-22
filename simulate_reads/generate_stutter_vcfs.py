@@ -17,6 +17,7 @@ import vcf #PyVCF
 import pysam #note: can be tricky to install, used bioconda channel
 import random
 import pandas as pd
+import pybedtools #conda install -c bioconda bedtools htslib pybedtools
 
 __author__ = 'Harriet Dashnow'
 __credits__ = ['Harriet Dashnow']
@@ -37,7 +38,7 @@ def parse_args():
         help='bed file containing genomic locations of STRs and their repeat units. Genomic locations should be relative to the fasta reference.')
     parser.add_argument(
         '--stutter', type=str, required=False,
-        help='csv file containing stutter models.') #XXX need to describe this properly
+        help='csv file containing stutter models. If none, no stutter will be simulated') #XXX need to describe this properly
     parser.add_argument(
         '--output', type=str, required=False,
         help='Base name for output files, including vcfs and bed files.') #XXX should have a default for this?
@@ -49,10 +50,13 @@ def parse_args():
         help='File giving names of stutter vcf files with corresponding stutter probabilities. (default: stdout)')
     parser.add_argument(
         '--base0', action='store_true',
-        help='Genomic positions in bed file and region are 0-based. Otherwise assumed to be 1-based.')
+        help='Genomic positions in bed file(s) and region are 0-based. Otherwise assumed to be 1-based. Applies to all bed/region input (so make sure they are consistent)')
     parser.add_argument(
         '--flank', type=int, default=10000,
         help='Number of flanking base to include in the output bed file on either side of the STR. (default: %(default)s)')
+    parser.add_argument(
+        '--target', type=str,
+        help='bed file containing genomic locations of the region to the simulated. Warning: variants outside these regions will be excluded.')
     parser.add_argument(
         '--seed', required=False,
         help='Random seed (can be any hashible input).')
@@ -366,6 +370,9 @@ def main():
     if args.seed:
         random.seed(args.seed)
 
+    if target:
+        target_dict = parse_bed(args.bed, position_base)
+
     # Parse STR regions that need to be simulated
     bed_dict = parse_bed(args.bed, position_base)
     # get corresponding bit of the fasta file
@@ -395,8 +402,14 @@ def main():
             # XXX make this some kind of random number generator
             allele1_delta = 10
             allele2_delta = 0
-        allele1 = mutate_str(ref_sequence, repeatunit, delta = allele1_delta)
-        allele2 = mutate_str(ref_sequence, repeatunit, delta = allele2_delta)
+
+        try:
+            allele1 = mutate_str(ref_sequence, repeatunit, delta = allele1_delta)
+            allele2 = mutate_str(ref_sequence, repeatunit, delta = allele2_delta)
+        except ValueError, e:
+            sys.stderr.write(region + '\n')
+            sys.stderr.write(e + '\n')
+            continue
 
         # Get stutter from stutterDF based on the repeatunit length
         probs1 = stutterDF.iloc[len(repeatunit)].values
@@ -405,7 +418,7 @@ def main():
         deltas2 = stutterDF.columns.values.astype(int) + allele2_delta
         stutter_deltas,stutter_probs = combine_stutter(deltas1, probs1, deltas2, probs2, rescale_probs = True)
         # Possible extension:
-        # Calculate stutter probability profile for each allele using a forumlar instead of observed data
+        # Calculate stutter probability profile for each allele using a formular instead of observed data
         # Parameters: repeat unit size, repeat length?
 
         # Write the true alleles (the basis for the stutter simulation)
@@ -421,7 +434,12 @@ def main():
         for delta, prob in zip(stutter_deltas,stutter_probs):
             stutter_fname = outfile_base + '.{0}.stutter_{1}.vcf'.format(region, delta)
             vcf_stutter = get_vcf_writer(stutter_fname)
-            mutatant_allele = mutate_str(ref_sequence, repeatunit, delta = delta)
+            try:
+                mutatant_allele = mutate_str(ref_sequence, repeatunit, delta = delta)
+            except ValueError, e:
+                sys.stderr.write(region + '\n')
+                sys.stderr.write(e + '\n')
+                continue
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
                 ref, alt = trim_indel(ref_sequence, mutatant_allele)
                 record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref,
