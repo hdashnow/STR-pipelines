@@ -407,8 +407,8 @@ def main():
             allele1 = mutate_str(ref_sequence, repeatunit, delta = allele1_delta)
             allele2 = mutate_str(ref_sequence, repeatunit, delta = allele2_delta)
         except ValueError as e:
-            sys.stderr.write(region)
-            sys.stderr.write(e)
+            sys.stderr.write(region + '\n')
+            sys.stderr.write(str(e) + '\n')
             continue
 
         # Get stutter from stutterDF based on the repeatunit length
@@ -437,8 +437,8 @@ def main():
             try:
                 mutatant_allele = mutate_str(ref_sequence, repeatunit, delta = delta)
             except ValueError as e:
-                sys.stderr.write(region)
-                sys.stderr.write(e)
+                sys.stderr.write(region + '\n')
+                sys.stderr.write(str(e) + '\n')
                 continue
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
                 ref, alt = trim_indel(ref_sequence, mutatant_allele)
