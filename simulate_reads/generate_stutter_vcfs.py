@@ -370,7 +370,7 @@ def main():
     if args.seed:
         random.seed(args.seed)
 
-    if target:
+    if args.target:
         target_dict = parse_bed(args.bed, position_base)
 
     # Parse STR regions that need to be simulated
