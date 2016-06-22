@@ -213,8 +213,8 @@ def mutate_str(ref_sequence, repeatunit, delta, random=False):
             an insertion, negative if a deletion. 0 will return the input
             sequence.
         random (bool): Insert/delete repeat units from a random position.
-        If False, insert in the left-most position. Note, GATK seems to silently
-        fail on vcfs with indels to the right of an imperfect repeat.
+        If False, inserts/deletes in the left-most position. Note, GATK seems
+        to silently fail on vcfs with indels to the right of an imperfect repeat.
 
     Returns:
         str: The mutated DNA sequence.
