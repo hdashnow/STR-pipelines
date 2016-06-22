@@ -406,7 +406,7 @@ def main():
         try:
             allele1 = mutate_str(ref_sequence, repeatunit, delta = allele1_delta)
             allele2 = mutate_str(ref_sequence, repeatunit, delta = allele2_delta)
-        except ValueError, e:
+        except ValueError as e:
             sys.stderr.write(region + '\n')
             sys.stderr.write(e + '\n')
             continue
@@ -436,7 +436,7 @@ def main():
             vcf_stutter = get_vcf_writer(stutter_fname)
             try:
                 mutatant_allele = mutate_str(ref_sequence, repeatunit, delta = delta)
-            except ValueError, e:
+            except ValueError as e:
                 sys.stderr.write(region + '\n')
                 sys.stderr.write(e + '\n')
                 continue
