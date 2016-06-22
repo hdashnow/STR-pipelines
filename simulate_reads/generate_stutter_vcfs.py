@@ -17,7 +17,7 @@ import vcf #PyVCF
 import pysam #note: can be tricky to install, used bioconda channel
 import random
 import pandas as pd
-import pybedtools #conda install -c bioconda bedtools htslib pybedtools
+#import pybedtools #conda install -c bioconda bedtools htslib pybedtools
 
 __author__ = 'Harriet Dashnow'
 __credits__ = ['Harriet Dashnow']
