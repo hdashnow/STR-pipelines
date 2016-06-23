@@ -436,14 +436,14 @@ def main():
 
         # Generate stutter alleles
         for delta, prob in zip(stutter_deltas,stutter_probs):
-            stutter_fname = outfile_base + '.{0}.stutter_{1}.vcf'.format(region, delta)
-            vcf_stutter = get_vcf_writer(stutter_fname)
             try:
                 mutatant_allele = mutate_str(ref_sequence, repeatunit, delta = delta)
             except ValueError as e:
                 sys.stderr.write(region + '\n')
                 sys.stderr.write(str(e) + '\n')
                 continue
+            stutter_fname = outfile_base + '.{0}.stutter_{1}.vcf'.format(region, delta)
+            vcf_stutter = get_vcf_writer(stutter_fname)
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
                 ref, alt = trim_indel(ref_sequence, mutatant_allele)
                 record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref,
