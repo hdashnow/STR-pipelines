@@ -60,7 +60,7 @@ mutate_ref = {
             -o $output.fasta
             -L $branch.bedfile
             -V $input.vcf
-    """
+    ""","small"
 }
 
 
@@ -78,13 +78,13 @@ generate_reads = {
                 -m 500 -s 50
                 --id $readname 
                 -o $outname
-        ""","medium"
+        ""","small"
     }
 }
 
 combine_gzip = {
     from('*.fq') produce(input.fq.prefix + '.fastq.gz') {
-        exec "cat $inputs.fq | gzip -c > $output.gz","medium"
+        exec "cat $inputs.fq | gzip -c > $output.gz","small"
     }
 }
 
