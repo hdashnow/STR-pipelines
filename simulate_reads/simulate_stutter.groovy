@@ -60,7 +60,7 @@ mutate_ref = {
             -o $output.fasta
             -L $branch.bedfile
             -V $input.vcf
-    ""","small"
+    ""","quick"
 }
 
 
@@ -76,9 +76,9 @@ generate_reads = {
             $ART/art_illumina -i $input.fasta -p -na
                 -l 150 -ss HS25 -f $branch.coverage
                 -m 500 -s 50
-                --id $readname 
+                --id $readname
                 -o $outname
-        ""","small"
+        ""","quick"
     }
 }
 
