@@ -412,8 +412,12 @@ def main():
             continue
 
         # Get stutter from stutterDF based on the repeatunit length
-        probs1 = stutterDF.iloc[len(repeatunit)].values
-        probs2 = stutterDF.iloc[len(repeatunit)].values
+        try:
+            probs1 = stutterDF.iloc[len(repeatunit) - 1].values
+            probs2 = stutterDF.iloc[len(repeatunit) - 1].values
+        except IndexError:
+            sys.stderr.write('{0} {1} repeat unit length not found in stutter profiles\n'.format(region,repeatunit))
+            continue
         deltas1 = stutterDF.columns.values.astype(int) + allele1_delta
         deltas2 = stutterDF.columns.values.astype(int) + allele2_delta
         stutter_deltas,stutter_probs = combine_stutter(deltas1, probs1, deltas2, probs2, rescale_probs = True)
