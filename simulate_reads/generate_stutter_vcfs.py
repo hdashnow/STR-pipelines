@@ -467,6 +467,8 @@ def main():
 
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
                 ref, alt = trim_indel(ref_sequence, mutatant_allele)
+                if len(ref) == 0 or len(alt) == 0:
+                    raise ValueError("ref: {} alt: {} chr: {} pos: {}".format(ref, alt, chrom, start))
                 record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref,
                             ALT=[vcf.model._Substitution(alt)],
                             QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
