@@ -305,8 +305,8 @@ def get_vcf_writer(vcf_outfile):
     template = 'template.vcf'
     with open(template, 'w') as vcf_template:
         vcf_template.write('##fileformat=VCFv4.1\n')
-        vcf_template.write('##source={}\n'.format('generate_stutter_vcfs.py'))
-        vcf_template.write('##reference={}\n'.format('ucsc.hg19.fasta'))
+        vcf_template.write('##source={0}\n'.format('generate_stutter_vcfs.py'))
+        vcf_template.write('##reference={0}\n'.format('ucsc.hg19.fasta'))
         vcf_template.write('##INFO=<ID=RU,Number=1,Type=String,Description="Repeat Unit">\n')
         vcf_template.write('##INFO=<ID=RL,Number=1,Type=Integer,Description="Reference Length of Repeat">\n')
         vcf_template.write('##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
@@ -468,7 +468,7 @@ def main():
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
                 ref, alt = trim_indel(ref_sequence, mutatant_allele)
                 if len(ref) == 0 or len(alt) == 0:
-                    raise ValueError("ref: {} alt: {} chr: {} pos: {}".format(ref, alt, chrom, start))
+                    raise ValueError("ref: {0} alt: {1} chr: {2} pos: {3}".format(ref, alt, chrom, start))
                 record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref,
                             ALT=[vcf.model._Substitution(alt)],
                             QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
