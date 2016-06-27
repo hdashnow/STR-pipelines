@@ -121,6 +121,8 @@ def is_dna(a):
     Returns:
         bool: True if all characters are DNA, otherwise False
     """
+    if len(a) == 0:
+        return(False)
     dna_chars = 'atcgnATCGN'
     return all(i in dna_chars for i in a)
 
