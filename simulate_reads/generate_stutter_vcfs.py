@@ -11,6 +11,7 @@ A single file with the list of all vcf files and their desired frequencies
 
 import sys
 from argparse import (ArgumentParser, FileType)
+from collections import OrderedDict
 from Bio.Seq import Seq #BioPython
 from Bio.Alphabet import generic_dna
 import vcf #PyVCF
@@ -123,7 +124,7 @@ def is_dna(a):
     dna_chars = 'atcgnATCGN'
     return all(i in dna_chars for i in a)
 
-def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
+def parse_bed(bedfilename, position_base = 1, bed_dict = OrderedDict()):
     """Parse regions from bed file. Ignore lines starting with #.
 
     Args:
