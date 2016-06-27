@@ -35,7 +35,7 @@ generate_vcf = {
     def bedname = get_fname(input.bed)
 
     preserve("*.truth.vcf") {
-        produce(bedname.prefix + ".truth.vcf", "*.vcf", bedname.prefix + ".txt") {
+        produce(bedname.prefix + ".truth.vcf", "*.stutter.vcf", bedname.prefix + ".txt", "*.stutter.bed") {
             exec """
                 python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix --stutter $STUTTER > $output.txt
         """
@@ -45,20 +45,30 @@ generate_vcf = {
     }
 }
 
+
+@filter("merged")
+merge_bed = {
+    doc "sort and merge bed file"
+
+    exec """
+        bedtools sort -i $input.bed | bedtools merge > $output.bed
+    """
+}
+
 @Transform("fasta")
 mutate_ref = {
     doc "Generate a version of the reference genome (or subset) with mutations given by the input VCF"
 
         // Set target coverage for this stutter allele
         branch.coverage = branch.param_map["$input.vcf"]["probability"].toDouble() * total_coverage
-        branch.bedfile = branch.param_map["$input.vcf"]["bedfile"]
+        //branch.bedfile = branch.param_map["$input.vcf"]["bedfile"]
         branch.delta = branch.param_map["$input.vcf"]["delta"]
     exec """
         java -Xmx4g -jar $GATK
             -T FastaAlternateReferenceMaker
             -R $REF
             -o $output.fasta
-            -L $branch.bedfile
+            -L $input.bed
             -V $input.vcf
     ""","quick"
 }
@@ -167,8 +177,8 @@ run {
 
     generate_vcf +
 
-    "%.stutter.vcf" * [
-        mutate_ref + generate_reads
+    "%.stutter.*" * [
+        merge_bed + mutate_ref + generate_reads
     ] +
 
     "*.stutter_*_R%.fq" * [
