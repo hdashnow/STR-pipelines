@@ -26,6 +26,15 @@ def parse_parameters(all_parameters) {
     return(param_map)
 }
 
+@filter("sorted")
+sort_bed = {
+    doc "sort bed file"
+
+    exec """
+        bedtools sort -i $input.bed > $output.bed
+    """
+}
+
 /////////////////////////////
 // Produce mutated fasta file
 
@@ -175,6 +184,7 @@ IndelRealigner = {
 
 run {
 
+    sort_bed +
     generate_vcf +
 
     "%.stutter.*" * [
