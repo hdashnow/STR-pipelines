@@ -377,6 +377,10 @@ def main():
     bed_dict = parse_bed(args.bed, position_base)
     # get corresponding bit of the fasta file
     fastafile = pysam.Fastafile(args.ref)
+    # For each delta and stutter probability combination record:
+    # Stutter_vcf_fname, prob, bed_out, delta, vcf_records
+    vcf_probs_dict = {}
+
     for region in bed_dict:
         chrom = bed_dict[region]['chr']
         start = bed_dict[region]['start'] # These positions are in base-1
@@ -387,10 +391,7 @@ def main():
         # note fetch step requires zero-based indexing c.f. 1-based indexing in vcf and bed dict
         ref_sequence = fastafile.fetch(chrom, start - 1, stop - 1).upper()
 
-        # Write a bed file of the bases around the given region
-        bed_out = '{}.{}.bed'.format(outfile_base,region)
-        with open(bed_out, "w") as f:
-            f.write('{0}\t{1}\t{2}\t{3}\n'.format(chrom, start - args.flank, stop + args.flank, name))
+        bedout_line = '{0}\t{1}\t{2}\t{3}\n'.format(chrom, start - args.flank, stop + args.flank, name)
 
         #delta = 1 #XXX need to generate delta, or get from input
 
@@ -442,17 +443,46 @@ def main():
                 sys.stderr.write(region + '\n')
                 sys.stderr.write(str(e) + '\n')
                 continue
-            stutter_fname = outfile_base + '.{0}.stutter_{1}.vcf'.format(region, delta)
-            vcf_stutter = get_vcf_writer(stutter_fname)
+            #stutter_fname = outfile_base + '.{0}.stutter_{1}.vcf'.format(region, delta)
+
+            # Save details to vcf_probs_dict
+            delta_stutter_id = '{0}_{1}'.format(delta, prob)
+            stutter_vcf_fname = '{0}.{1}.stutter.vcf'.format(outfile_base, delta_stutter_id)
+            bed_out = '{0}.{1}.stutter.bed'.format(outfile_base, delta_stutter_id)
+            if delta_stutter_id not in vcf_probs_dict:
+                vcf_probs_dict[delta_stutter_id] = {
+                    'stutter_vcf_fname': stutter_vcf_fname,
+                    'prob': prob,
+                    'bed_out': bed_out,
+                    'delta': delta,
+                    'vcf_records': [], #lines of the vcf file
+                    'bed_records': [] #lines of the bed file
+                }
+                # write the filename and corresponding stutter probability for use in later pipeline stages
+                vcf_probs_writer.write('{0}\t{1}\t{2}\t{3}\n'.format(stutter_vcf_fname, prob, bed_out, delta))
+            vcf_probs_dict[delta_stutter_id]['bed_records'].append(bedout_line) # These should always be unique per bed file, if not there's a bug
+
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
                 ref, alt = trim_indel(ref_sequence, mutatant_allele)
                 record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref,
                             ALT=[vcf.model._Substitution(alt)],
                             QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
                             FORMAT='.', sample_indexes=[], samples=None)
-                vcf_stutter.write_record(record)
-            # write the filename and corresponding stutter probability for use in later pipeline stages
-            vcf_probs_writer.write('{0}\t{1}\t{2}\t{3}\n'.format(stutter_fname, prob, bed_out, delta))
+                #vcf_stutter.write_record(record)
+                vcf_probs_dict[delta_stutter_id]['vcf_records'].append(record)
+
+    # Ginally, write output stutter vcf and bed files for each delta/stutter prob combination
+    for id in vcf_probs_dict:
+
+        # Write a bed file
+        with open(vcf_probs_dict[id]['bed_out'], "w") as f:
+            for line in vcf_probs_dict[id]['bed_records']:
+                f.write(line)
+
+        # Write a vcf file
+        vcf_stutter = get_vcf_writer(vcf_probs_dict[id]['stutter_vcf_fname'])
+        for record in vcf_probs_dict[id]['vcf_records']:
+            vcf_stutter.write_record(record) #XXX Need to close vcf write?
 
 if __name__ == '__main__':
     main()

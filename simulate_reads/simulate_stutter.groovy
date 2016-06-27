@@ -169,7 +169,7 @@ run {
 
     generate_vcf +
 
-    "%.stutter_%.vcf" * [
+    "%.stutter.vcf" * [
         mutate_ref + generate_reads
     ] +
 
