@@ -470,6 +470,7 @@ def main():
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
                 ref, alt = trim_indel(ref_sequence, mutatant_allele)
                 if len(ref) == 0 or len(alt) == 0:
+                    sys.stderr.write(ref_sequence + " " + mutatant_allele)
                     raise ValueError("Allele is blank ref: {0} alt: {1} chr: {2} pos: {3}".format(ref, alt, chrom, start))
                 record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref,
                             ALT=[vcf.model._Substitution(alt)],
