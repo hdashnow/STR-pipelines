@@ -2,6 +2,7 @@
 
 ART='/mnt/storage/harrietd/src/art_bin_MountRainier'
 REF='/mnt/storage/shared/genomes/hg19/gatk/gatk.ucsc.hg19.fasta'
+CHR_ORDER='/mnt/storage/shared/genomes/hg19/gatk/gatk.ucsc.hg19.chr_order.txt'
 GATK='/mnt/storage/harrietd/src/GenomeAnalysisTK-3.3-0/GenomeAnalysisTK.jar'
 TOOLS='/mnt/storage/harrietd/git/STR-pipelines/simulate_reads'
 STUTTER='/mnt/storage/harrietd/git/STR-pipelines/simulate_reads/stutter_model.csv'
@@ -31,7 +32,7 @@ sort_bed = {
     doc "sort bed file"
 
     exec """
-        bedtools sort -i $input.bed > $output.bed
+        bedtools sort -i $input.bed -faidx $CHR_ORDER > $output.bed
     """
 }
 
@@ -57,10 +58,10 @@ generate_vcf = {
 
 @filter("merged")
 merge_bed = {
-    doc "sort and merge bed file"
+    doc "merge bed file"
 
     exec """
-        bedtools sort -i $input.bed | bedtools merge > $output.bed
+        bedtools merge -i $input.bed > $output.bed
     """
 }
 
