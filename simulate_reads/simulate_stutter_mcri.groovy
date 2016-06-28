@@ -41,6 +41,7 @@ sort_bed = {
 
 generate_vcf = {
     doc "Generate a VCF of STR mutations and stutter, along with their probabilities"
+    output.dir = "vcf_bed"
 
     def bedname = get_fname(input.bed)
 
@@ -59,6 +60,7 @@ generate_vcf = {
 @filter("merged")
 merge_bed = {
     doc "merge bed file"
+    output.dir = "vcf_bed"
 
     exec """
         bedtools merge -i $input.bed > $output.bed
@@ -68,6 +70,7 @@ merge_bed = {
 @Transform("fasta")
 mutate_ref = {
     doc "Generate a version of the reference genome (or subset) with mutations given by the input VCF"
+    output.dir = "fasta"
 
         // Set target coverage for this stutter allele
         branch.coverage = branch.param_map["$input.vcf"]["probability"].toDouble() * total_coverage
@@ -88,6 +91,9 @@ mutate_ref = {
 // Generate reads
 
 generate_reads = {
+    doc "Sample reads from the altered reference sequence segment"
+    output.dir = "fastq"
+
     def readname = 'stutter_' + branch.delta + '_'
     def fastaname = get_fname(REF)
     produce(fastaname + '_' + input.fasta.prefix + '_L001_R1.fq', fastaname + '_' + input.fasta.prefix + '_L001_R2.fq') {
@@ -111,6 +117,7 @@ combine_gzip = {
 fastqc = {
     doc "Run FASTQC to generate QC metrics for raw reads"
     output.dir = "fastqc"
+
     transform('.fastq.gz')  to('_fastqc.zip') {
         exec "fastqc -o ${output.dir} $inputs.gz","medium"
     }
