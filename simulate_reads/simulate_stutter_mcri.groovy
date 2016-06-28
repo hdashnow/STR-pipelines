@@ -109,6 +109,7 @@ generate_reads = {
     }
 }
 
+@preserve("*.fastq.gz")
 combine_gzip = {
     from('*.fq') produce(input.fq.prefix + '.fastq.gz') {
         exec "cat $inputs.fq | gzip -c > $output.gz","small"
@@ -135,6 +136,7 @@ set_sample_info = {
     branch.lane = 001
     }
 
+@preserve("*.bai")
 index_bam = {
     transform("bam") to ("bam.bai") {
         exec "samtools index $input.bam", "medium"
