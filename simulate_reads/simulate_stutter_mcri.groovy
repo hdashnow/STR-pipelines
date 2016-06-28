@@ -30,6 +30,7 @@ def parse_parameters(all_parameters) {
 @filter("sorted")
 sort_bed = {
     doc "sort bed file"
+    branch.source_bed = input.bed
 
     exec """
         bedtools sort -i $input.bed -faidx $CHR_ORDER > $output.bed
@@ -95,8 +96,8 @@ generate_reads = {
     output.dir = "fastq"
 
     def readname = 'stutter_' + branch.delta + '_'
-    def fastaname = get_fname(REF)
-    produce(fastaname + '_' + input.fasta.prefix + '_L001_R1.fq', fastaname + '_' + input.fasta.prefix + '_L001_R2.fq') {
+    //def fastaname = get_fname(REF)
+    produce(input.fasta.prefix + '_L001_R1.fq', input.fasta.prefix + '_L001_R2.fq') {
         def outname = output.prefix[0..-2]
         exec """
             $ART/art_illumina -i $input.fasta -p -na
@@ -149,7 +150,9 @@ threads=8
 @preserve("*.bam")
 align_bwa = {
     doc "Align with bwa mem algorithm."
-    from('fastq.gz', 'fastq.gz') transform('bam') {
+
+    def fastaname = get_fname(REF)
+    from('fastq.gz', 'fastq.gz') produce(fastaname + branch.source_bed + '.bam') {
         exec """
             bwa mem -M -t $threads
             -R "@RG\\tID:${sample}\\tPL:$PLATFORM\\tPU:1\\tLB:${sample}\\tSM:${sample}"
