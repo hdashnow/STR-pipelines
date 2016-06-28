@@ -1,7 +1,7 @@
 // Bpipe pipeline to simulate paired end reads from a fasta file, with microsatellite stutter
 
 ART='/mnt/storage/harrietd/src/art_bin_MountRainier'
-REF='/mnt/storage/shared/genomes/hg19/gatk/gatk.ucsc.hg19.fasta'
+REF='/mnt/storage/shared/genomes/hg19/gatk/bwamem/gatk.ucsc.hg19.fasta'
 CHR_ORDER='/mnt/storage/shared/genomes/hg19/gatk/gatk.ucsc.hg19.chr_order.txt'
 GATK='/mnt/storage/harrietd/src/GenomeAnalysisTK-3.3-0/GenomeAnalysisTK.jar'
 TOOLS='/mnt/storage/harrietd/git/STR-pipelines/simulate_reads'
