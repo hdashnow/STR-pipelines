@@ -97,7 +97,7 @@ generate_reads = {
 
     def readname = 'stutter_' + branch.delta + '_'
     //def fastaname = get_fname(REF)
-    produce(input.fasta.prefix + '_L001_R1.fq', input.fasta.prefix + '_L001_R2.fq') {
+    produce( get_fname(input.fasta.prefix) + '_L001_R1.fq', get_fname(input.fasta.prefix) + '_L001_R2.fq') {
         def outname = output.prefix[0..-2]
         exec """
             $ART/art_illumina -i $input.fasta -p -na
@@ -152,7 +152,7 @@ align_bwa = {
     doc "Align with bwa mem algorithm."
 
     def fastaname = get_fname(REF)
-    from('fastq.gz', 'fastq.gz') produce(fastaname + branch.source_bed + '.bam') {
+    from('fastq.gz', 'fastq.gz') produce(fastaname.prefix + '.' + get_fname(branch.source_bed).prefix + '.bam') {
         exec """
             bwa mem -M -t $threads
             -R "@RG\\tID:${sample}\\tPL:$PLATFORM\\tPU:1\\tLB:${sample}\\tSM:${sample}"
