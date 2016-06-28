@@ -296,8 +296,11 @@ def trim_indel(ref, alt):
     if ref == alt:
         raise ValueError("Ref and alt are the same. ref: {0} alt: {1}".format(ref, alt))
     for i in range(1, min(len(ref), len(alt))):
-        if ref[-i] != alt[-i]: # Check if the rightmost bases is different
-            return ref[:-i+1], alt[:-i+1]
+        if ref[-i] != alt[-i]: # Check if the rightmost bases are different
+            if i == 1: # The last bases are identical, so can't be trimmed
+                return ref, alt
+            else:
+                return ref[:-i+1], alt[:-i+1]
     return ref[:-i], alt[:-i]
 
 def get_vcf_writer(vcf_outfile):
@@ -470,7 +473,7 @@ def main():
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
                 ref, alt = trim_indel(ref_sequence, mutatant_allele)
                 if len(ref) == 0 or len(alt) == 0:
-                    sys.stderr.write(ref_sequence + " " + mutatant_allele)
+                    sys.stderr.write(ref_sequence + " " + mutatant_allele + '\n')
                     raise ValueError("Allele is blank ref: {0} alt: {1} chr: {2} pos: {3}".format(ref, alt, chrom, start))
                 record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref,
                             ALT=[vcf.model._Substitution(alt)],
