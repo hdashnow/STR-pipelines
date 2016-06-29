@@ -11,6 +11,7 @@ A single file with the list of all vcf files and their desired frequencies
 
 import sys
 from argparse import (ArgumentParser, FileType)
+from collections import OrderedDict
 from Bio.Seq import Seq #BioPython
 from Bio.Alphabet import generic_dna
 import vcf #PyVCF
@@ -120,10 +121,12 @@ def is_dna(a):
     Returns:
         bool: True if all characters are DNA, otherwise False
     """
+    if len(a) == 0:
+        return(False)
     dna_chars = 'atcgnATCGN'
     return all(i in dna_chars for i in a)
 
-def parse_bed(bedfilename, position_base = 1, bed_dict = {}):
+def parse_bed(bedfilename, position_base = 1, bed_dict = OrderedDict()):
     """Parse regions from bed file. Ignore lines starting with #.
 
     Args:
@@ -290,9 +293,14 @@ def trim_indel(ref, alt):
     """
     if min(len(ref), len(alt)) <= 1:
         return ref, alt
+    if ref == alt:
+        raise ValueError("Ref and alt are the same. ref: {0} alt: {1}".format(ref, alt))
     for i in range(1, min(len(ref), len(alt))):
-        if ref[-i] != alt[-i]: # Check if the rightmost bases is different
-            return ref[:-i+1], alt[:-i+1]
+        if ref[-i] != alt[-i]: # Check if the rightmost bases are different
+            if i == 1: # The last bases are identical, so can't be trimmed
+                return ref, alt
+            else:
+                return ref[:-i+1], alt[:-i+1]
     return ref[:-i], alt[:-i]
 
 def get_vcf_writer(vcf_outfile):
@@ -302,8 +310,8 @@ def get_vcf_writer(vcf_outfile):
     template = 'template.vcf'
     with open(template, 'w') as vcf_template:
         vcf_template.write('##fileformat=VCFv4.1\n')
-        vcf_template.write('##source={}\n'.format('generate_stutter_vcfs.py'))
-        vcf_template.write('##reference={}\n'.format('ucsc.hg19.fasta'))
+        vcf_template.write('##source={0}\n'.format('generate_stutter_vcfs.py'))
+        vcf_template.write('##reference={0}\n'.format('ucsc.hg19.fasta'))
         vcf_template.write('##INFO=<ID=RU,Number=1,Type=String,Description="Repeat Unit">\n')
         vcf_template.write('##INFO=<ID=RL,Number=1,Type=Integer,Description="Reference Length of Repeat">\n')
         vcf_template.write('##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
@@ -377,6 +385,10 @@ def main():
     bed_dict = parse_bed(args.bed, position_base)
     # get corresponding bit of the fasta file
     fastafile = pysam.Fastafile(args.ref)
+    # For each delta and stutter probability combination record:
+    # Stutter_vcf_fname, prob, bed_out, delta, vcf_records
+    vcf_probs_dict = {}
+
     for region in bed_dict:
         chrom = bed_dict[region]['chr']
         start = bed_dict[region]['start'] # These positions are in base-1
@@ -387,10 +399,7 @@ def main():
         # note fetch step requires zero-based indexing c.f. 1-based indexing in vcf and bed dict
         ref_sequence = fastafile.fetch(chrom, start - 1, stop - 1).upper()
 
-        # Write a bed file of the bases around the given region
-        bed_out = '{}.{}.bed'.format(outfile_base,region)
-        with open(bed_out, "w") as f:
-            f.write('{0}\t{1}\t{2}\t{3}\n'.format(chrom, start - args.flank, stop + args.flank, name))
+        bedout_line = '{0}\t{1}\t{2}\t{3}\n'.format(chrom, start - args.flank, stop + args.flank, name)
 
         #delta = 1 #XXX need to generate delta, or get from input
 
@@ -442,17 +451,49 @@ def main():
                 sys.stderr.write(region + '\n')
                 sys.stderr.write(str(e) + '\n')
                 continue
-            stutter_fname = outfile_base + '.{0}.stutter_{1}.vcf'.format(region, delta)
-            vcf_stutter = get_vcf_writer(stutter_fname)
+            #stutter_fname = outfile_base + '.{0}.stutter_{1}.vcf'.format(region, delta)
+
+            # Save details to vcf_probs_dict
+            delta_stutter_id = '{0}_{1}'.format(delta, prob)
+            stutter_vcf_fname = '{0}.{1}.stutter.vcf'.format(outfile_base, delta_stutter_id)
+            bed_out = '{0}.{1}.stutter.bed'.format(outfile_base, delta_stutter_id)
+            if delta_stutter_id not in vcf_probs_dict:
+                vcf_probs_dict[delta_stutter_id] = {
+                    'stutter_vcf_fname': stutter_vcf_fname,
+                    'prob': prob,
+                    'bed_out': bed_out,
+                    'delta': delta,
+                    'vcf_records': [], #lines of the vcf file
+                    'bed_records': [] #lines of the bed file
+                }
+                # write the filename and corresponding stutter probability for use in later pipeline stages
+                vcf_probs_writer.write('{0}\t{1}\t{2}\t{3}\n'.format(stutter_vcf_fname, prob, bed_out, delta))
+            vcf_probs_dict[delta_stutter_id]['bed_records'].append(bedout_line) # These should always be unique per bed file, if not there's a bug
+
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
                 ref, alt = trim_indel(ref_sequence, mutatant_allele)
+                if len(ref) == 0 or len(alt) == 0:
+                    sys.stderr.write(ref_sequence + " " + mutatant_allele + '\n')
+                    raise ValueError("Allele is blank ref: {0} alt: {1} chr: {2} pos: {3}".format(ref, alt, chrom, start))
                 record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref,
                             ALT=[vcf.model._Substitution(alt)],
                             QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
                             FORMAT='.', sample_indexes=[], samples=None)
-                vcf_stutter.write_record(record)
-            # write the filename and corresponding stutter probability for use in later pipeline stages
-            vcf_probs_writer.write('{0}\t{1}\t{2}\t{3}\n'.format(stutter_fname, prob, bed_out, delta))
+                #vcf_stutter.write_record(record)
+                vcf_probs_dict[delta_stutter_id]['vcf_records'].append(record)
+
+    # Ginally, write output stutter vcf and bed files for each delta/stutter prob combination
+    for id in vcf_probs_dict:
+
+        # Write a bed file
+        with open(vcf_probs_dict[id]['bed_out'], "w") as f:
+            for line in vcf_probs_dict[id]['bed_records']:
+                f.write(line)
+
+        # Write a vcf file
+        vcf_stutter = get_vcf_writer(vcf_probs_dict[id]['stutter_vcf_fname'])
+        for record in vcf_probs_dict[id]['vcf_records']:
+            vcf_stutter.write_record(record) #XXX Need to close vcf write?
 
 if __name__ == '__main__':
     main()

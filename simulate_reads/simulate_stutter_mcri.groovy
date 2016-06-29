@@ -1,10 +1,11 @@
 // Bpipe pipeline to simulate paired end reads from a fasta file, with microsatellite stutter
 
-ART='/vlsci/VR0320/hdashnow/art_bin_ChocolateCherryCake'
-REF='/vlsci/VR0002/shared/Reference_Files/GATK_bundle_Refs/hg19/ucsc.hg19.fasta'
-GATK="/usr/local/gatk/3.4-46/GenomeAnalysisTK.jar"
-TOOLS='/vlsci/VR0320/hdashnow/git/STR-pipelines/simulate_reads'
-STUTTER='/vlsci/VR0320/hdashnow/git/STR-pipelines/simulate_reads/stutter_model.csv'
+ART='/mnt/storage/harrietd/src/art_bin_MountRainier'
+REF='/mnt/storage/shared/genomes/hg19/gatk/bwamem/gatk.ucsc.hg19.fasta'
+CHR_ORDER='/mnt/storage/shared/genomes/hg19/gatk/gatk.ucsc.hg19.chr_order.txt'
+GATK='/mnt/storage/harrietd/src/GenomeAnalysisTK-3.3-0/GenomeAnalysisTK.jar'
+TOOLS='/mnt/storage/harrietd/git/STR-pipelines/simulate_reads'
+STUTTER='/mnt/storage/harrietd/git/STR-pipelines/simulate_reads/stutter_model.csv'
 total_coverage = 100
 
 def get_fname(path) {
@@ -26,16 +27,27 @@ def parse_parameters(all_parameters) {
     return(param_map)
 }
 
+@filter("sorted")
+sort_bed = {
+    doc "sort bed file"
+    branch.source_bed = input.bed
+
+    exec """
+        bedtools sort -i $input.bed -faidx $CHR_ORDER > $output.bed
+    """
+}
+
 /////////////////////////////
 // Produce mutated fasta file
 
 generate_vcf = {
     doc "Generate a VCF of STR mutations and stutter, along with their probabilities"
+    output.dir = "vcf_bed"
 
     def bedname = get_fname(input.bed)
 
     preserve("*.truth.vcf") {
-        produce(bedname.prefix + ".truth.vcf", "*.vcf", bedname.prefix + ".txt") {
+        produce(bedname.prefix + ".truth.vcf", "*.stutter.vcf", bedname.prefix + ".txt", "*.stutter.bed") {
             exec """
                 python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix --stutter $STUTTER > $output.txt
         """
@@ -45,20 +57,32 @@ generate_vcf = {
     }
 }
 
+
+@filter("merged")
+merge_bed = {
+    doc "merge bed file"
+    output.dir = "vcf_bed"
+
+    exec """
+        bedtools merge -i $input.bed > $output.bed
+    """
+}
+
 @Transform("fasta")
 mutate_ref = {
     doc "Generate a version of the reference genome (or subset) with mutations given by the input VCF"
+    output.dir = "fasta"
 
         // Set target coverage for this stutter allele
         branch.coverage = branch.param_map["$input.vcf"]["probability"].toDouble() * total_coverage
-        branch.bedfile = branch.param_map["$input.vcf"]["bedfile"]
+        //branch.bedfile = branch.param_map["$input.vcf"]["bedfile"]
         branch.delta = branch.param_map["$input.vcf"]["delta"]
     exec """
         java -Xmx4g -jar $GATK
             -T FastaAlternateReferenceMaker
             -R $REF
             -o $output.fasta
-            -L $branch.bedfile
+            -L $input.bed
             -V $input.vcf
     ""","quick"
 }
@@ -68,9 +92,12 @@ mutate_ref = {
 // Generate reads
 
 generate_reads = {
+    doc "Sample reads from the altered reference sequence segment"
+    output.dir = "fastq"
+
     def readname = 'stutter_' + branch.delta + '_'
-    def fastaname = get_fname(REF)
-    produce(fastaname + '_' + input.fasta.prefix + '_L001_R1.fq', fastaname + '_' + input.fasta.prefix + '_L001_R2.fq') {
+    //def fastaname = get_fname(REF)
+    produce( get_fname(input.fasta.prefix) + '_L001_R1.fq', get_fname(input.fasta.prefix) + '_L001_R2.fq') {
         def outname = output.prefix[0..-2]
         exec """
             $ART/art_illumina -i $input.fasta -p -na
@@ -91,6 +118,7 @@ combine_gzip = {
 fastqc = {
     doc "Run FASTQC to generate QC metrics for raw reads"
     output.dir = "fastqc"
+
     transform('.fastq.gz')  to('_fastqc.zip') {
         exec "fastqc -o ${output.dir} $inputs.gz","medium"
     }
@@ -114,8 +142,6 @@ index_bam = {
     forward input
 }
 
-// Paths relative to the analysis directory
-load "/vlsci/VR0320/hdashnow/git/STR-pipelines/repeatseq/bpipe.config"
 
 PLATFORM='illumina'
 
@@ -124,7 +150,9 @@ threads=8
 @preserve("*.bam")
 align_bwa = {
     doc "Align with bwa mem algorithm."
-    from('fastq.gz', 'fastq.gz') transform('bam') {
+
+    def fastaname = get_fname(REF)
+    from('fastq.gz', 'fastq.gz') produce(fastaname.prefix + '.' + get_fname(branch.source_bed).prefix + '.bam') {
         exec """
             bwa mem -M -t $threads
             -R "@RG\\tID:${sample}\\tPL:$PLATFORM\\tPU:1\\tLB:${sample}\\tSM:${sample}"
@@ -167,13 +195,14 @@ IndelRealigner = {
 
 run {
 
+    sort_bed +
     generate_vcf +
 
-    "%.stutter.vcf" * [
-        mutate_ref + generate_reads
+    "%.stutter.*" * [
+        merge_bed + mutate_ref + generate_reads
     ] +
 
-    "*.stutter_*_R%.fq" * [
+    "*.stutter.*_R%.fq" * [
         combine_gzip
     ] +
 
