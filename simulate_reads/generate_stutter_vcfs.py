@@ -329,6 +329,37 @@ def get_vcf_writer(vcf_outfile, samples=['SAMPLE'], source='generate_stutter_vcf
 
     return(vcf_out)
 
+def get_alt_genotype(ref, alt1, alt2):
+    """For a given reference allele, and two alternates, return the appropriate
+    ALT and GT (genotype) fields for to be written to the VCF
+
+    Args:
+        ref (str): reference allele
+        alt1 (str): first alternate allele
+        alt2 (str): second alternate allele
+
+    Return:
+        tuple (vcf_alt, vcf_gt)
+        vcf_alt (str):
+        vcf_gt (str):
+    """
+    if alt1.upper() == ref.upper() and alt2.upper() == ref.upper():
+        vcf_alt = '.'
+        vcf_gt = '0/0'
+    elif alt1.upper() == alt2.upper():
+        vcf_alt = alt1
+        vcf_gt = '1/1'
+    elif alt1.upper() == ref.upper():
+        vcf_alt = alt2
+        vcf_gt = '0/1'
+    elif alt2.upper() == ref.upper():
+        vcf_alt = alt1
+        vcf_gt = '0/1'
+    else:
+        vcf_alt = ','.join([alt1, alt2])
+        vcf_gt = '1/2'
+    return(vcf_alt, vcf_gt)
+
 def combine_stutter(deltas1, probs1, deltas2, probs2, rescale_probs = True):
     """Combine the stutter distributions from two different alleles to give the stutter distrobutions for an entire genotype.
 
@@ -442,14 +473,13 @@ def main():
         # Parameters: repeat unit size, repeat length?
 
         # Write the true alleles (the basis for the stutter simulation)
-        # XXX also shouldn't include ALT for allele if same as ref - should be in genotype instead
+        vcf_alt, vcf_gt = get_alt_genotype(ref_sequence, allele1, allele2)
         vcf_id = '.'
-        vcf_alt = ','.join([allele1, allele2])
         vcf_qual = '.'
         vcf_filter = 'PASS'
         vcf_info = '='.join(['RU',repeatunit])
         vcf_format = 'GT'
-        vcf_sample = '0/1'
+        vcf_sample = vcf_gt
         vcf_record = '\t'.join([str(x) for x in [chrom, start, vcf_id,
                                 ref_sequence, vcf_alt, vcf_qual, vcf_filter,
                                 vcf_info, vcf_format, vcf_sample] ])
