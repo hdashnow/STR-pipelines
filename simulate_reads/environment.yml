@@ -1,0 +1,10 @@
+name: STR
+dependencies:
+- python=3.4*
+- BioPython
+- PyVCF
+- pysam
+- pandas
+- bedtools
+- htslib
+- pybedtools
