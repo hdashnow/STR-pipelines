@@ -14,7 +14,7 @@ from argparse import (ArgumentParser, FileType)
 from collections import OrderedDict
 from Bio.Seq import Seq #BioPython
 from Bio.Alphabet import generic_dna
-import vcf #PyVCF
+#import vcf #PyVCF
 import pysam #note: can be tricky to install, used bioconda channel
 import random
 import pandas as pd
@@ -303,24 +303,31 @@ def trim_indel(ref, alt):
                 return ref[:-i+1], alt[:-i+1]
     return ref[:-i], alt[:-i]
 
-def get_vcf_writer(vcf_outfile):
-    """Generate a vcf writer object.
-    Writes a template vcf containing header info (can be deleted afterwards?)"""
+def get_vcf_writer(vcf_outfile, samples=['SAMPLE'], source='generate_stutter_vcfs.py', ref='ucsc.hg19.fasta'):
+    """Write vcf header to file given. Return writer object for that file.
 
-    template = 'template.vcf'
-    with open(template, 'w') as vcf_template:
-        vcf_template.write('##fileformat=VCFv4.1\n')
-        vcf_template.write('##source={0}\n'.format('generate_stutter_vcfs.py'))
-        vcf_template.write('##reference={0}\n'.format('ucsc.hg19.fasta'))
-        vcf_template.write('##INFO=<ID=RU,Number=1,Type=String,Description="Repeat Unit">\n')
-        vcf_template.write('##INFO=<ID=RL,Number=1,Type=Integer,Description="Reference Length of Repeat">\n')
-        vcf_template.write('##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
-        vcf_template.write('#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE\n')
+    Args:
+        vcf_outfile (str): filename to write the vcf header to
+        samples (list of str): names of samples
+        source (str): program used to generate vcf (this script by default)
+        ref (str): reference genome
 
-    with open(template) as vcf_template:
-        vcf_reader = vcf.Reader(vcf_template)
-        vcf_writer = vcf.Writer(open(vcf_outfile, 'w'), vcf_reader)
-    return vcf_writer
+    Return:
+        file writer object
+    """
+
+    vcf_out = open(vcf_outfile, 'w')
+
+    vcf_out.write('##fileformat=VCFv4.1\n')
+    vcf_out.write('##source={0}\n'.format(source))
+    vcf_out.write('##reference={0}\n'.format(ref))
+    vcf_out.write('##INFO=<ID=RU,Number=1,Type=String,Description="Repeat Unit">\n')
+    vcf_out.write('##INFO=<ID=RL,Number=1,Type=Integer,Description="Reference Length of Repeat">\n')
+    vcf_out.write('##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
+    samples_header = '\t'.join(samples)
+    vcf_out.write('#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t{0}\n'.format(samples_header))
+
+    return(vcf_out)
 
 def combine_stutter(deltas1, probs1, deltas2, probs2, rescale_probs = True):
     """Combine the stutter distributions from two different alleles to give the stutter distrobutions for an entire genotype.
@@ -435,13 +442,18 @@ def main():
         # Parameters: repeat unit size, repeat length?
 
         # Write the true alleles (the basis for the stutter simulation)
-        # XXX need to figure out how to write genotype, not just two alleles?
         # XXX also shouldn't include ALT for allele if same as ref - should be in genotype instead
-        record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref_sequence,
-                    ALT=[vcf.model._Substitution(allele1), vcf.model._Substitution(allele2)],
-                    QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
-                    FORMAT='.', sample_indexes=[], samples=None)
-        vcf_truth.write_record(record)
+        vcf_id = '.'
+        vcf_alt = ','.join([allele1, allele2])
+        vcf_qual = '.'
+        vcf_filter = 'PASS'
+        vcf_info = '='.join(['RU',repeatunit])
+        vcf_format = 'GT'
+        vcf_sample = '0/1'
+        vcf_record = '\t'.join([str(x) for x in [chrom, start, vcf_id,
+                                ref_sequence, vcf_alt, vcf_qual, vcf_filter,
+                                vcf_info, vcf_format, vcf_sample] ])
+        vcf_truth.write(vcf_record + '\n')
 
         # Generate stutter alleles
         for delta, prob in zip(stutter_deltas,stutter_probs):
@@ -475,14 +487,21 @@ def main():
                 if len(ref) == 0 or len(alt) == 0:
                     sys.stderr.write(ref_sequence + " " + mutatant_allele + '\n')
                     raise ValueError("Allele is blank ref: {0} alt: {1} chr: {2} pos: {3}".format(ref, alt, chrom, start))
-                record = vcf.model._Record(CHROM=chrom, POS=start, ID='.', REF=ref,
-                            ALT=[vcf.model._Substitution(alt)],
-                            QUAL='.', FILTER='PASS', INFO={'RU':repeatunit},
-                            FORMAT='.', sample_indexes=[], samples=None)
-                #vcf_stutter.write_record(record)
-                vcf_probs_dict[delta_stutter_id]['vcf_records'].append(record)
 
-    # Ginally, write output stutter vcf and bed files for each delta/stutter prob combination
+                vcf_id = '.'
+                vcf_alt = alt
+                vcf_qual = '.'
+                vcf_filter = 'PASS'
+                vcf_info = '='.join(['RU',repeatunit])
+                vcf_format = '.'
+                vcf_sample = ''
+                vcf_record = '\t'.join([str(x) for x in [chrom, start, vcf_id,
+                                        ref_sequence, vcf_alt, vcf_qual, vcf_filter,
+                                        vcf_info, vcf_format, vcf_sample] ])
+
+                vcf_probs_dict[delta_stutter_id]['vcf_records'].append(vcf_record)
+
+    # Finally, write output stutter vcf and bed files for each delta/stutter prob combination
     for id in vcf_probs_dict:
 
         # Write a bed file
@@ -493,7 +512,7 @@ def main():
         # Write a vcf file
         vcf_stutter = get_vcf_writer(vcf_probs_dict[id]['stutter_vcf_fname'])
         for record in vcf_probs_dict[id]['vcf_records']:
-            vcf_stutter.write_record(record) #XXX Need to close vcf write?
+            vcf_stutter.write(record + '\n') #XXX Need to close vcf write?
 
 if __name__ == '__main__':
     main()
