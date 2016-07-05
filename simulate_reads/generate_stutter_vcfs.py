@@ -329,7 +329,7 @@ def get_vcf_writer(vcf_outfile, samples=['SAMPLE'], source='generate_stutter_vcf
 
     return(vcf_out)
 
-def get_alt_genotype(ref, alt1, alt2):
+def get_alt_genotype(ref, alt1, alt2=None):
     """For a given reference allele, and two alternates, return the appropriate
     ALT and GT (genotype) fields for to be written to the VCF
 
@@ -343,6 +343,8 @@ def get_alt_genotype(ref, alt1, alt2):
         vcf_alt (str):
         vcf_gt (str):
     """
+    if alt2 == None:
+        alt2 = alt1
     if alt1.upper() == ref.upper() and alt2.upper() == ref.upper():
         vcf_alt = '.'
         vcf_gt = '0/0'
@@ -518,13 +520,15 @@ def main():
                     sys.stderr.write(ref_sequence + " " + mutatant_allele + '\n')
                     raise ValueError("Allele is blank ref: {0} alt: {1} chr: {2} pos: {3}".format(ref, alt, chrom, start))
 
+                vcf_alt, vcf_gt = get_alt_genotype(ref, alt)
                 vcf_id = '.'
+                ref_sequence = ref
                 vcf_alt = alt
                 vcf_qual = '.'
                 vcf_filter = 'PASS'
                 vcf_info = '='.join(['RU',repeatunit])
                 vcf_format = '.'
-                vcf_sample = ''
+                vcf_sample = '' # i.e. don't give GT
                 vcf_record = '\t'.join([str(x) for x in [chrom, start, vcf_id,
                                         ref_sequence, vcf_alt, vcf_qual, vcf_filter,
                                         vcf_info, vcf_format, vcf_sample] ])
