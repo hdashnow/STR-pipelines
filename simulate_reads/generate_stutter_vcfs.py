@@ -522,15 +522,14 @@ def main():
 
                 vcf_alt, vcf_gt = get_alt_genotype(ref, alt)
                 vcf_id = '.'
-                ref_sequence = ref
-                vcf_alt = alt
+                vcf_ref = ref
                 vcf_qual = '.'
                 vcf_filter = 'PASS'
                 vcf_info = '='.join(['RU',repeatunit])
                 vcf_format = '.'
                 vcf_sample = '' # i.e. don't give GT
                 vcf_record = '\t'.join([str(x) for x in [chrom, start, vcf_id,
-                                        ref_sequence, vcf_alt, vcf_qual, vcf_filter,
+                                        vcf_ref, vcf_alt, vcf_qual, vcf_filter,
                                         vcf_info, vcf_format, vcf_sample] ])
 
                 vcf_probs_dict[delta_stutter_id]['vcf_records'].append(vcf_record)
