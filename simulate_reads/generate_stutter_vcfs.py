@@ -475,6 +475,7 @@ def main():
         # Parameters: repeat unit size, repeat length?
 
         # Write the true alleles (the basis for the stutter simulation)
+        vcf_start = start + 1 # convert to base 1 for vcf file
         vcf_alt, vcf_gt = get_alt_genotype(ref_sequence, allele1, allele2)
         vcf_id = '.'
         vcf_qual = '.'
@@ -482,7 +483,7 @@ def main():
         vcf_info = '='.join(['RU',repeatunit])
         vcf_format = 'GT'
         vcf_sample = vcf_gt
-        vcf_record = '\t'.join([str(x) for x in [chrom, start, vcf_id,
+        vcf_record = '\t'.join([str(x) for x in [chrom, vcf_start, vcf_id,
                                 ref_sequence, vcf_alt, vcf_qual, vcf_filter,
                                 vcf_info, vcf_format, vcf_sample] ])
         vcf_truth.write(vcf_record + '\n')
@@ -520,6 +521,7 @@ def main():
                     sys.stderr.write(ref_sequence + " " + mutatant_allele + '\n')
                     raise ValueError("Allele is blank ref: {0} alt: {1} chr: {2} pos: {3}".format(ref, alt, chrom, start))
 
+                vcf_start = start + 1 # convert to base 1 for vcf file
                 vcf_alt, vcf_gt = get_alt_genotype(ref, alt)
                 vcf_id = '.'
                 vcf_ref = ref
@@ -528,7 +530,7 @@ def main():
                 vcf_info = '='.join(['RU',repeatunit])
                 vcf_format = '.'
                 vcf_sample = '' # i.e. don't give GT
-                vcf_record = '\t'.join([str(x) for x in [chrom, start, vcf_id,
+                vcf_record = '\t'.join([str(x) for x in [chrom, vcf_start, vcf_id,
                                         vcf_ref, vcf_alt, vcf_qual, vcf_filter,
                                         vcf_info, vcf_format, vcf_sample] ])
 
