@@ -475,7 +475,7 @@ def main():
         # Parameters: repeat unit size, repeat length?
 
         # Write the true alleles (the basis for the stutter simulation)
-        vcf_start = start #+ 1 # convert to base 1 for vcf file
+        vcf_start = start + 1 # convert to base 1 for vcf file
         vcf_alt, vcf_gt = get_alt_genotype(ref_sequence, allele1, allele2)
         vcf_id = '.'
         vcf_qual = '.'
@@ -521,7 +521,7 @@ def main():
                     sys.stderr.write(ref_sequence + " " + mutatant_allele + '\n')
                     raise ValueError("Allele is blank ref: {0} alt: {1} chr: {2} pos: {3}".format(ref, alt, chrom, start))
 
-                vcf_start = start #+ 1 # convert to base 1 for vcf file
+                vcf_start = start + 1 # convert to base 1 for vcf file
                 vcf_alt, vcf_gt = get_alt_genotype(ref, alt)
                 vcf_id = '.'
                 vcf_ref = ref
