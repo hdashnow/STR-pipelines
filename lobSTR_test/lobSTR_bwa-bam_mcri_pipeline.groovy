@@ -28,9 +28,15 @@ allelotype = {
     }
 }
 
+// -O v for vcf, -O z for vcf.gz
+// Also, sort.
+@filter('trimmed')
+trim_variants = {
+        exec "bcftools norm -f $REF -O v $input.vcf | vcf-sort > $output.vcf"
+}
 
 run {
     "%.bam" * [
-        allelotype
+        allelotype + trim_variants
     ]
 }
