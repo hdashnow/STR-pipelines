@@ -191,6 +191,14 @@ IndelRealigner = {
     """
 }
 
+// -O v for vcf, -O z for vcf.gz
+// Also, sort.
+@preserve("*.vcf")
+@filter('trimmed')
+trim_variants = {
+        exec "bcftools norm -f $REF -O v $input.vcf | vcf-sort > $output.vcf"
+}
+
 /////////////////////////////
 // Run pipeline
 
@@ -212,5 +220,7 @@ run {
         set_sample_info +
         align_bwa + index_bam //+
 //        RealignerTargetCreator + IndelRealigner
-    ]
+    ] +
+
+    "%.truth.vcf" * [ trim_variants ]
 }
