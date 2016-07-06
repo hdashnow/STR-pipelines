@@ -32,9 +32,11 @@ sort_bed = {
     doc "sort bed file"
     branch.source_bed = input.bed
 
-    exec """
-        bedtools sort -i $input.bed -faidx $CHR_ORDER > $output.bed
-    """
+    preserve("*.bed") {
+        exec """
+            bedtools sort -i $input.bed -faidx $CHR_ORDER > $output.bed
+        """
+    }
 }
 
 /////////////////////////////
@@ -109,10 +111,11 @@ generate_reads = {
     }
 }
 
-@preserve("*.fastq.gz")
 combine_gzip = {
     from('*.fq') produce(input.fq.prefix + '.fastq.gz') {
-        exec "cat $inputs.fq | gzip -c > $output.gz","small"
+        preserve("*.gz") {
+            exec "cat $inputs.fq | gzip -c > $output.gz","small"
+        }
     }
 }
 
