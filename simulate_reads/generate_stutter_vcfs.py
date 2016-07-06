@@ -50,8 +50,8 @@ def parse_args():
         '--stutter_output', type=str, required=False,
         help='File giving names of stutter vcf files with corresponding stutter probabilities. (default: stdout)')
     parser.add_argument(
-        '--base0', action='store_true',
-        help='Genomic positions in bed file(s) and region are 0-based. Otherwise assumed to be 1-based. Applies to all bed/region input (so make sure they are consistent)')
+        '--base1', action='store_true',
+        help='Genomic positions in bed file(s) and region are 1-based. Otherwise assumed to be 0-based. Applies to all bed/region input (so make sure they are consistent)')
     parser.add_argument(
         '--flank', type=int, default=10000,
         help='Number of flanking base to include in the output bed file on either side of the STR. (default: %(default)s)')
@@ -126,7 +126,7 @@ def is_dna(a):
     dna_chars = 'atcgnATCGN'
     return all(i in dna_chars for i in a)
 
-def parse_bed(bedfilename, position_base = 1, bed_dict = OrderedDict()):
+def parse_bed(bedfilename, position_base = 0, bed_dict = OrderedDict()):
     """Parse regions from bed file. Ignore lines starting with #.
 
     Args:
@@ -139,7 +139,7 @@ def parse_bed(bedfilename, position_base = 1, bed_dict = OrderedDict()):
             format: bed_dict[unique_id] = {'chr':str, 'start':int, 'stop':int, 'name':None}
         position_base (int): 0 or 1. The starting position the genomic regions
             are measured relative to in the input file. If 0, all postions will
-            be converted to 1. Assumed to be 1 by default.
+            be converted to 1. Assumed to be 0 by default.
 
     Returns:
         dict: bed_dict[unique_id] = {'chr':str, 'start':int, 'stop':int,
@@ -158,7 +158,7 @@ def parse_bed(bedfilename, position_base = 1, bed_dict = OrderedDict()):
             split_line = bedfile_line.split()
             ref_chr = split_line[0]
             ref_start = int(split_line[1]) + base_shift
-            ref_stop = int(split_line[2]) + base_shift
+            ref_stop = int(split_line[2]) + base_shift # Do I need to chage stop, when shifting to base 0?
             # If repeat start and end are the wrong way around, swap them
             if ref_stop < ref_start:
                 ref_start = int(split_line[2]) - position_base
@@ -410,10 +410,10 @@ def main():
     else:
         vcf_probs_writer = sys.stdout
 
-    if args.base0:
-        position_base = 0
-    else:
+    if args.base1:
         position_base = 1
+    else:
+        position_base = 0
 
     if args.seed:
         random.seed(args.seed)
