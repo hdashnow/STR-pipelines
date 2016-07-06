@@ -9,6 +9,7 @@ LOBSTR_MODELS="/mnt/storage/harrietd/src/lobSTR-bin-Linux-x86_64-4.0.0/share/lob
 LOBSTR_BUNDLE="/mnt/storage/harrietd/ref-data/hg19_v3.0.2"
 LOBSTR_REF="$LOBSTR_BUNDLE/lobstr_v3.0.2_hg19_ref/lobSTR_"
 LOBSTR_STRINFO="$LOBSTR_BUNDLE/lobstr_v3.0.2_hg19_strinfo.tab"
+REF='/mnt/storage/shared/genomes/hg19/gatk/bwamem/gatk.ucsc.hg19.fasta'
 
 //load "/vlsci/VR0320/hdashnow/git/STR-pipelines/lobSTR_test/bpipe.config"
 
