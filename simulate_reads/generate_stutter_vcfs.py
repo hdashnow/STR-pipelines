@@ -145,13 +145,13 @@ def parse_bed(bedfilename, position_base = 0, bed_dict = OrderedDict()):
         dict: bed_dict[unique_id] = {'chr':str, 'start':int, 'stop':int,
                                     'name':str or None, 'repeatunit':str or None,
                                     'deltas': [int, int] or None}
-            Genomic regions, in base-1.
+            Genomic regions, in base-0.
     """
     with open(bedfilename) as bedfile:
         if position_base == 0:
-            base_shift = 1
-        else:
             base_shift = 0
+        else:
+            base_shift = -1
         for bedfile_line in bedfile:
             if bedfile_line.startswith('#') or bedfile_line == '\n':
                 continue
