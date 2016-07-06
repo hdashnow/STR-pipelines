@@ -51,7 +51,7 @@ def parse_args():
         help='File giving names of stutter vcf files with corresponding stutter probabilities. (default: stdout)')
     parser.add_argument(
         '--base1', action='store_true',
-        help='Genomic positions in bed file(s) and region are 1-based. Otherwise assumed to be 0-based. Applies to all bed/region input (so make sure they are consistent)')
+        help='Genomic positions in bed file(s) and region are 1-based. Otherwise assumed to be standard 0-based bed format. Applies to all bed/region input (so make sure they are consistent)')
     parser.add_argument(
         '--flank', type=int, default=10000,
         help='Number of flanking base to include in the output bed file on either side of the STR. (default: %(default)s)')
@@ -138,14 +138,15 @@ def parse_bed(bedfilename, position_base = 0, bed_dict = OrderedDict()):
         bed_dict (dict): existing genomic regions to include in the output.
             format: bed_dict[unique_id] = {'chr':str, 'start':int, 'stop':int, 'name':None}
         position_base (int): 0 or 1. The starting position the genomic regions
-            are measured relative to in the input file. If 0, all postions will
-            be converted to 1. Assumed to be 0 by default.
+            are measured relative to in the input file. i.e. the numbering of the
+            first base in the reference genome. If 1, all postions will
+            be converted to base-0. Assumed to be 0 by default.
 
     Returns:
         dict: bed_dict[unique_id] = {'chr':str, 'start':int, 'stop':int,
                                     'name':str or None, 'repeatunit':str or None,
                                     'deltas': [int, int] or None}
-            Genomic regions, in base-0.
+            Genomic regions, in base-0 (i.e. bed format).
     """
     with open(bedfilename) as bedfile:
         if position_base == 0:
@@ -157,17 +158,19 @@ def parse_bed(bedfilename, position_base = 0, bed_dict = OrderedDict()):
                 continue
             split_line = bedfile_line.split()
             ref_chr = split_line[0]
-            ref_start = int(split_line[1]) + base_shift
-            ref_stop = int(split_line[2]) + base_shift # Do I need to chage stop, when shifting to base 0?
+            ref_start = int(split_line[1])
+            ref_stop = int(split_line[2])
             # If repeat start and end are the wrong way around, swap them
             if ref_stop < ref_start:
-                ref_start = int(split_line[2]) - position_base
-                ref_stop = int(split_line[1]) - position_base
+                ref_start = int(split_line[2])
+                ref_stop = int(split_line[1])
                 sys.stderr.write('Warning, bed start position greater than end position for line:')
                 sys.stderr.write(bedfile_line)
+            ref_start = ref_start + base_shift # Change to base-0 if needed. End remains unchanged as per bed format.
             if len(split_line) > 3:
-                name = split_line[3] #XXX Need to parse out STR repeat unit here
+                name = split_line[3]
                 split_name = name.split('_')
+                # Parse out STR repeat unit and target genotype if present (required?)
                 if len(split_name) >= 2:
                     repeatunit = split_name[0]
                     if is_dna(repeatunit):
@@ -431,19 +434,19 @@ def main():
 
     for region in bed_dict:
         chrom = bed_dict[region]['chr']
-        start = bed_dict[region]['start'] # These positions are in base-1
+        start = bed_dict[region]['start'] # These positions are in base-0
         stop = bed_dict[region]['stop']
         name = bed_dict[region]['name']
         repeatunit = bed_dict[region]['repeatunit']
         deltas = bed_dict[region]['deltas']
         # note fetch step requires zero-based indexing c.f. 1-based indexing in vcf and bed dict
-        ref_sequence = fastafile.fetch(chrom, start - 1, stop - 1).upper()
+        ref_sequence = fastafile.fetch(chrom, start, stop).upper()
 
         bedout_line = '{0}\t{1}\t{2}\t{3}\n'.format(chrom, start - args.flank, stop + args.flank, name)
 
         #delta = 1 #XXX need to generate delta, or get from input
 
-        # Generate a genotype for these - totally random, or heterozygous pathogenic?
+        #XXX Generate a genotype for these - totally random, or heterozygous pathogenic?
         if deltas:
             allele1_delta = deltas[0]
             allele2_delta = deltas[1]
@@ -547,7 +550,7 @@ def main():
         # Write a vcf file
         vcf_stutter = get_vcf_writer(vcf_probs_dict[id]['stutter_vcf_fname'])
         for record in vcf_probs_dict[id]['vcf_records']:
-            vcf_stutter.write(record + '\n') #XXX Need to close vcf write?
+            vcf_stutter.write(record + '\n') #XXX Need to close vcf writer?
 
 if __name__ == '__main__':
     main()
