@@ -193,10 +193,11 @@ IndelRealigner = {
 
 // -O v for vcf, -O z for vcf.gz
 // Also, sort.
-@preserve("*.vcf")
 @filter('trimmed')
 trim_variants = {
+    preserve("*.vcf") {
         exec "bcftools norm -f $REF -O v $input.vcf | vcf-sort > $output.vcf"
+    }
 }
 
 /////////////////////////////
