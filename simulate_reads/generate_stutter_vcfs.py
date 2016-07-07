@@ -495,6 +495,7 @@ def main():
         for delta, prob in zip(stutter_deltas,stutter_probs):
             try:
                 mutatant_allele = mutate_str(ref_sequence, repeatunit, delta = delta)
+
             except ValueError as e:
                 sys.stderr.write(region + '\n')
                 sys.stderr.write(str(e) + '\n')
@@ -520,8 +521,9 @@ def main():
 
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
                 ref, alt = trim_indel(ref_sequence, mutatant_allele)
-                if len(ref) == 0 or len(alt) == 0:
-                    sys.stderr.write(ref_sequence + " " + mutatant_allele + '\n')
+                # Check for an empty ref sequence. XXX alt allowed to be blank. Is this allowed in VCF format?
+                if len(ref) == 0:
+                    sys.stderr.write('ref: ' + ref_sequence + ' mutant: ' + mutatant_allele + '\n')
                     raise ValueError("Allele is blank ref: {0} alt: {1} chr: {2} pos: {3}".format(ref, alt, chrom, start))
 
                 vcf_start = start + 1 # convert to base 1 for vcf file
