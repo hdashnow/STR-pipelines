@@ -126,7 +126,7 @@ def is_dna(a):
     dna_chars = 'atcgnATCGN'
     return all(i in dna_chars for i in a)
 
-def parse_bed(bedfilename, position_base = 0, bed_dict = OrderedDict()):
+def parse_bed(bedfilename, position_base = 0, bed_dict = OrderedDict(), pad_left = 1):
     """Parse regions from bed file. Ignore lines starting with #.
 
     Args:
@@ -141,6 +141,11 @@ def parse_bed(bedfilename, position_base = 0, bed_dict = OrderedDict()):
             are measured relative to in the input file. i.e. the numbering of the
             first base in the reference genome. If 1, all postions will
             be converted to base-0. Assumed to be 0 by default.
+        pad_left (int): Minus pad_left to the start of each locus. This provides
+            this many bases of padding to the start(left) of each locus so that
+            all repeat units can be deleated without leaving a blank alt allele.
+            Setting this to 0 could result in blank alt alleles, and therefore
+            generate an invalid VCF. Default = 1.
 
     Returns:
         dict: bed_dict[unique_id] = {'chr':str, 'start':int, 'stop':int,
@@ -166,7 +171,9 @@ def parse_bed(bedfilename, position_base = 0, bed_dict = OrderedDict()):
                 ref_stop = int(split_line[1])
                 sys.stderr.write('Warning, bed start position greater than end position for line:')
                 sys.stderr.write(bedfile_line)
-            ref_start = ref_start + base_shift # Change to base-0 if needed. End remains unchanged as per bed format.
+            # Change to base-0 if needed. End remains unchanged as per bed format.
+            # Apply padding bases.
+            ref_start = ref_start + base_shift - pad_left
             if len(split_line) > 3:
                 name = split_line[3]
                 split_name = name.split('_')
