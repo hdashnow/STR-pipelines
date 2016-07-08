@@ -496,7 +496,7 @@ def main():
         vcf_id = '.'
         vcf_qual = '.'
         vcf_filter = 'PASS'
-        vcf_info = '='.join(['RU',repeatunit]) + ';' + '='.join(['RL',ref_RL])
+        vcf_info = '='.join(['RU',repeatunit]) + ';' + '='.join(['RL',str(ref_RL)])
         vcf_format = 'GT'
         vcf_sample = vcf_gt
         vcf_record = '\t'.join([str(x) for x in [chrom, vcf_start, vcf_id,
