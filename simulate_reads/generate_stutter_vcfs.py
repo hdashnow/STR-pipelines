@@ -428,11 +428,15 @@ def main():
     if args.seed:
         random.seed(args.seed)
 
+    # Add this many bases of padding to the start(left) of each locus so that
+    # all repeat units can be deleated without leaving a blank alt allele.
+    pad_left = 1
+
     if args.target:
-        target_dict = parse_bed(args.bed, position_base)
+        target_dict = parse_bed(args.bed, position_base, pad_left=pad_left)
 
     # Parse STR regions that need to be simulated
-    bed_dict = parse_bed(args.bed, position_base)
+    bed_dict = parse_bed(args.bed, position_base, pad_left=pad_left)
     # get corresponding bit of the fasta file
     fastafile = pysam.Fastafile(args.ref)
     # For each delta and stutter probability combination record:
@@ -448,6 +452,8 @@ def main():
         deltas = bed_dict[region]['deltas']
         # note fetch step requires zero-based indexing c.f. 1-based indexing in vcf and bed dict
         ref_sequence = fastafile.fetch(chrom, start, stop).upper()
+        # Repeat length in number of repeat units (esimtated from input, not actually counted)
+        ref_RL = (len(ref_sequence) - pad_left) / len(repeatunit)
 
         bedout_line = '{0}\t{1}\t{2}\t{3}\n'.format(chrom, start - args.flank, stop + args.flank, name)
 
@@ -490,7 +496,7 @@ def main():
         vcf_id = '.'
         vcf_qual = '.'
         vcf_filter = 'PASS'
-        vcf_info = '='.join(['RU',repeatunit])
+        vcf_info = '='.join(['RU',repeatunit]) + ';' + '='.join(['RL',ref_RL])
         vcf_format = 'GT'
         vcf_sample = vcf_gt
         vcf_record = '\t'.join([str(x) for x in [chrom, vcf_start, vcf_id,
