@@ -555,6 +555,11 @@ def main():
                 vcf_probs_dict[delta_stutter_id]['vcf_records'].append(vcf_record)
 
     # Finally, write output stutter vcf and bed files for each delta/stutter prob combination
+    # progress bar
+    files_done = 0
+    total_files = len(list(vcf_probs_dict.keys()))
+    progress = 0
+
     for id in vcf_probs_dict:
 
         # Write a bed file
@@ -566,6 +571,11 @@ def main():
         vcf_stutter = get_vcf_writer(vcf_probs_dict[id]['stutter_vcf_fname'])
         for record in vcf_probs_dict[id]['vcf_records']:
             vcf_stutter.write(record + '\n') #XXX Need to close vcf writer?
+
+        files_done += 1
+        if files_done/total_files*100 > progress
+            progress += 10
+            sys.stderr.write('{}% done'.format(progress))
 
 if __name__ == '__main__':
     main()
