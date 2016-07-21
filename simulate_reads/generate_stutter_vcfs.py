@@ -573,9 +573,9 @@ def main():
             vcf_stutter.write(record + '\n') #XXX Need to close vcf writer?
 
         files_done += 1
-        if files_done/total_files*100 > progress
-            progress += 10
-            sys.stderr.write('{}% done'.format(progress))
+        if files_done/total_files*100 > progress:
+            progress += 1
+            sys.stderr.write('{}% done\n'.format(progress))
 
 if __name__ == '__main__':
     main()
