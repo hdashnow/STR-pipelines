@@ -516,21 +516,32 @@ def main():
             #stutter_fname = outfile_base + '.{0}.stutter_{1}.vcf'.format(region, delta)
 
             # Save details to vcf_probs_dict
-            delta_stutter_id = '{0}_{1}'.format(delta, prob)
-            stutter_vcf_fname = '{0}.{1}.stutter.vcf'.format(outfile_base, delta_stutter_id)
-            bed_out = '{0}.{1}.stutter.bed'.format(outfile_base, delta_stutter_id)
-            if delta_stutter_id not in vcf_probs_dict:
-                vcf_probs_dict[delta_stutter_id] = {
+            unique_counter = 1
+            stutter_id = '{0}_{1}'.format(prob, unique_counter)
+            stutter_vcf_fname = '{0}.{1}.stutter.vcf'.format(outfile_base, stutter_id)
+            bed_out = '{0}.{1}.stutter.bed'.format(outfile_base, stutter_id)
+            if stutter_id not in vcf_probs_dict:
+                vcf_probs_dict[stutter_id] = {
                     'stutter_vcf_fname': stutter_vcf_fname,
                     'prob': prob,
                     'bed_out': bed_out,
                     'delta': delta,
+                    'loci': set()
                     'vcf_records': [], #lines of the vcf file
                     'bed_records': [] #lines of the bed file
                 }
                 # write the filename and corresponding stutter probability for use in later pipeline stages
                 vcf_probs_writer.write('{0}\t{1}\t{2}\t{3}\n'.format(stutter_vcf_fname, prob, bed_out, delta))
-            vcf_probs_dict[delta_stutter_id]['bed_records'].append(bedout_line) # These should always be unique per bed file, if not there's a bug
+
+            # Check if the stutter_id already contains an entry for this locus
+            vcf_locus = '{0}-{1}'.format(chrom, start + 1) # locus position to check if this locus has already been included
+
+            while vcf_locus in vcf_probs_dict[stutter_id]['loci'][vcf_locus]: #XXX could result in infinite loop?
+                unique_counter += 1 #i.e. keep increasing the counter until you find a stutter_id that doesn't have this locus already
+                stutter_id = '{0}_{1}'.format(prob, unique_counter)
+
+            vcf_probs_dict[stutter_id]['loci'].update(vcf_locus)
+            vcf_probs_dict[stutter_id]['bed_records'].append(bedout_line) # These should always be unique per bed file, if not there's a bug
 
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
                 ref, alt = trim_indel(ref_sequence, mutatant_allele)
@@ -552,7 +563,8 @@ def main():
                                         vcf_ref, vcf_alt, vcf_qual, vcf_filter,
                                         vcf_info, vcf_format, vcf_sample] ])
 
-                vcf_probs_dict[delta_stutter_id]['vcf_records'].append(vcf_record)
+                vcf_probs_dict[stutter_id]['vcf_records'].append(vcf_record)
+
 
     # Finally, write output stutter vcf and bed files for each delta/stutter prob combination
     # progress bar
