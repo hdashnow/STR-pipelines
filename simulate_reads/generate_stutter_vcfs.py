@@ -536,7 +536,7 @@ def main():
             # Check if the stutter_id already contains an entry for this locus
             vcf_locus = '{0}-{1}'.format(chrom, start + 1) # locus position to check if this locus has already been included
 
-            while vcf_locus in vcf_probs_dict[stutter_id]['loci'][vcf_locus]: #XXX could result in infinite loop?
+            while vcf_locus in vcf_probs_dict[stutter_id]['loci']: #XXX could result in infinite loop?
                 unique_counter += 1 #i.e. keep increasing the counter until you find a stutter_id that doesn't have this locus already
                 stutter_id = '{0}_{1}'.format(prob, unique_counter)
 
