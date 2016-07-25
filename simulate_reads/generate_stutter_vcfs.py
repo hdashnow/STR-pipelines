@@ -526,7 +526,7 @@ def main():
                     'prob': prob,
                     'bed_out': bed_out,
                     'delta': delta,
-                    'loci': set()
+                    'loci': set(),
                     'vcf_records': [], #lines of the vcf file
                     'bed_records': [] #lines of the bed file
                 }
