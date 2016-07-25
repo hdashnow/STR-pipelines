@@ -518,29 +518,31 @@ def main():
             # Save details to vcf_probs_dict
             unique_counter = 1
             stutter_id = '{0}_{1}'.format(prob, unique_counter)
-            stutter_vcf_fname = '{0}.{1}.stutter.vcf'.format(outfile_base, stutter_id)
-            bed_out = '{0}.{1}.stutter.bed'.format(outfile_base, stutter_id)
-            if stutter_id not in vcf_probs_dict:
-                vcf_probs_dict[stutter_id] = {
-                    'stutter_vcf_fname': stutter_vcf_fname,
-                    'prob': prob,
-                    'bed_out': bed_out,
-                    'delta': delta,
-                    'loci': set(),
-                    'vcf_records': [], #lines of the vcf file
-                    'bed_records': [] #lines of the bed file
-                }
-                # write the filename and corresponding stutter probability for use in later pipeline stages
-                vcf_probs_writer.write('{0}\t{1}\t{2}\t{3}\n'.format(stutter_vcf_fname, prob, bed_out, delta))
-
-            # Check if the stutter_id already contains an entry for this locus
             vcf_locus = '{0}-{1}'.format(chrom, start + 1) # locus position to check if this locus has already been included
-
-            while vcf_locus in vcf_probs_dict[stutter_id]['loci']: #XXX could result in infinite loop?
-                unique_counter += 1 #i.e. keep increasing the counter until you find a stutter_id that doesn't have this locus already
-                stutter_id = '{0}_{1}'.format(prob, unique_counter)
-
-            vcf_probs_dict[stutter_id]['loci'].update(vcf_locus)
+            correct_id = False
+            # Check if the stutter_id already contains an entry for this locus
+            while not correct_id:
+                if stutter_id in vcf_probs_dict:
+                    if vcf_locus in vcf_probs_dict[stutter_id]['loci']:
+                        unique_counter += 1 #i.e. keep increasing the counter until you find a stutter_id that doesn't have this locus already
+                        stutter_id = '{0}_{1}'.format(prob, unique_counter)
+                    else:
+                        correct_id = True
+                else:
+                    stutter_vcf_fname = '{0}.{1}.stutter.vcf'.format(outfile_base, stutter_id)
+                    bed_out = '{0}.{1}.stutter.bed'.format(outfile_base, stutter_id)
+                    vcf_probs_dict[stutter_id] = {
+                        'stutter_vcf_fname': stutter_vcf_fname,
+                        'prob': prob,
+                        'bed_out': bed_out,
+                        'loci': set(),
+                        'vcf_records': [], #lines of the vcf file
+                        'bed_records': [] #lines of the bed file
+                    }
+                    # write the filename and corresponding stutter probability for use in later pipeline stages
+                    vcf_probs_writer.write('{0}\t{1}\t{2}\n'.format(stutter_vcf_fname, prob, bed_out))
+ 
+            vcf_probs_dict[stutter_id]['loci'].add(vcf_locus) 
             vcf_probs_dict[stutter_id]['bed_records'].append(bedout_line) # These should always be unique per bed file, if not there's a bug
 
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
@@ -572,8 +574,6 @@ def main():
     total_files = len(list(vcf_probs_dict.keys()))
     progress = 0
 
-    sys.stderr.write(vcf_probs_dict.keys())
-
     for id in vcf_probs_dict:
 
         # Write a bed file
@@ -588,7 +588,7 @@ def main():
 
         files_done += 1
         if files_done/total_files*100 > progress:
-            progress += 1
+            progress += 10
             sys.stderr.write('{}% done\n'.format(progress))
 
 if __name__ == '__main__':
