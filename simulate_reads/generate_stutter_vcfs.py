@@ -572,6 +572,8 @@ def main():
     total_files = len(list(vcf_probs_dict.keys()))
     progress = 0
 
+    sys.stderr.write(vcf_probs_dict.keys())
+
     for id in vcf_probs_dict:
 
         # Write a bed file
