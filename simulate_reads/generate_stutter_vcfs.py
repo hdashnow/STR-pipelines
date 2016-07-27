@@ -407,7 +407,7 @@ def main():
     if args.stutter:
         stutterDF = parse_stutter(args.stutter)
     else:
-        stutterDF = parse_stutter('stutter_model.csv') #XXX This requires that I know where this file is. so maybe refer to it relative to the location of this script?
+        stutterDF = parse_stutter('no_stutter_model.csv') #XXX This requires that I know where this file is. so maybe refer to it relative to the location of this script?
 
     if args.truth:
         truth_fname = args.truth
@@ -541,8 +541,8 @@ def main():
                     }
                     # write the filename and corresponding stutter probability for use in later pipeline stages
                     vcf_probs_writer.write('{0}\t{1}\t{2}\n'.format(stutter_vcf_fname, prob, bed_out))
- 
-            vcf_probs_dict[stutter_id]['loci'].add(vcf_locus) 
+
+            vcf_probs_dict[stutter_id]['loci'].add(vcf_locus)
             vcf_probs_dict[stutter_id]['bed_records'].append(bedout_line) # These should always be unique per bed file, if not there's a bug
 
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
