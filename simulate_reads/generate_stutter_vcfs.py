@@ -575,6 +575,11 @@ def main():
     progress = 0
 
     for id in vcf_probs_dict:
+        # Done write any files with zero probability XXX note that the output of
+        # the filenames earlier has to be fixed to align with this before it can be activated.
+        #if vcf_probs_dict[id]['prob'] == 0:
+        #    files_done += 1
+        #    continue
 
         # Write a bed file
         with open(vcf_probs_dict[id]['bed_out'], "w") as f:
@@ -588,7 +593,7 @@ def main():
 
         files_done += 1
         if files_done/total_files*100 > progress:
-            progress += 10
+            progress = round(files_done/total_files*100, -1) #round to nearest 10
             sys.stderr.write('{}% done\n'.format(progress))
 
 if __name__ == '__main__':
