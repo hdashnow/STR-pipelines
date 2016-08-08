@@ -36,10 +36,10 @@ generate_random_loci = {
 
     output.dir = "sim_bed"
 
-    produce("*.bed") {
+    produce("out1.bed", "out2.bed") {
         preserve("*.bed") {
             exec """
-                cat infile1.bed > outfile1.bed && cat infile2.bed > outfile2.bed
+                cat infile1.bed > $output1.bed && cat infile2.bed > $output2.bed
             """
         }
     }
