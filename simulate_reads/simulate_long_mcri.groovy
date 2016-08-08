@@ -29,19 +29,42 @@ def parse_parameters(all_parameters) {
     return(param_map)
 }
 
-generate_random_loci = {
-    doc """Generate bed file of loci to simulate. One locus pathogenic per file (rest normal range).
-    Do this multiple times until a few scenarios have been covered
-    Also one bed file of all the remaining loci (not in the above file) with normal ranges."""
+@preserve("*.bed")
+mutate_background = {
+    doc """ Generate a set of coding STR loci in the normal range.
+        Exclude one locus that will be simulated as variable."""
 
     output.dir = "sim_bed"
 
-    produce("*.bed") {
-        preserve("*.bed") {
-            exec """
-                cat infile1.bed > outfile1.bed && cat infile2.bed > outfile2.bed
-            """
-        }
+    produce('background.bed') {
+        exec """
+            /Users/hd_vlsci/Documents/git/microsat_stats/STR_simulation_script.R
+                -L chr2:233712201-233712246
+                /Users/hd_vlsci/Documents/reference-data/hg19.simpleRepeat.txt.gz
+                /Users/hd_vlsci/Documents/reference-data/str-stats
+                --background $output.bed
+        """
+
+    }
+}
+
+@preserve("*.bed")
+mutate_locus = {
+    doc """Generate a random heterozygous coding STR loci in the potentially
+        pathogenic range."""
+
+    output.dir = "sim_bed"
+    branch.simID = branch.name
+
+    produce(branch.simID + '.bed') {
+        exec """
+            /Users/hd_vlsci/Documents/git/microsat_stats/STR_simulation_script.R
+                -L chr2:233712201-233712246
+                /Users/hd_vlsci/Documents/reference-data/hg19.simpleRepeat.txt.gz
+                /Users/hd_vlsci/Documents/reference-data/str-stats
+                > $output.bed
+        """
+
     }
 }
 
@@ -220,13 +243,18 @@ trim_variants = {
 /////////////////////////////
 // Run pipeline
 
+// Adjust number of variants to simulate here
+simID = (1..10)
 
 run {
 // Generate bed file of loci to simulate. One locus pathogenic per file (rest normal range).
 // Do this multiple times until a few scenarios have been covered
-// Also one bed file of all the remaining loci (not in the above file) with normal ranges.
+// Also one bed file of all the remaining loci (not in the above file) with normal ranges (background).
 
-    generate_random_loci +
+
+    mutate_background +
+    simID * [mutate_locus] +
+
     "%.bed" * [
 
         sort_bed +
