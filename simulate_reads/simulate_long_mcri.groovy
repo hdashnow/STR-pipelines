@@ -58,10 +58,10 @@ mutate_locus = {
 
     produce(branch.simID + '.bed') {
         exec """
-            /Users/hd_vlsci/Documents/git/microsat_stats/STR_simulation_script.R
+            /mnt/storage/harrietd/git/STR-pipelines/simulate_reads/STR_simulation_script.R
                 -L chr2:233712201-233712246
-                /Users/hd_vlsci/Documents/reference-data/hg19.simpleRepeat.txt.gz
-                /Users/hd_vlsci/Documents/reference-data/str-stats
+                /mnt/storage/harrietd/git/STR-pipelines/simulate_reads/reference-data/hg19.simpleRepeat.txt.gz
+                /mnt/storage/harrietd/git/STR-pipelines/simulate_reads/reference-data/str-stats
                 > $output.bed
         """
 
