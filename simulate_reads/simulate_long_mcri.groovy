@@ -15,18 +15,20 @@ def get_fname(path) {
     return(x)
 }
 
+
+param_map = [:] //Define outside function so one big map for all branches
+
 // Parses tab-delmited table of filenames and their corresponding parameters
 // Returns these as a map that can be used to get the correct parameter as a branch variable
 def parse_parameters(all_parameters) {
 
-    def param_map = [:]
     lines = all_parameters.readLines()
 
     lines.each {
         row_list = it.split()
         param_map[row_list[0]] = ['probability':row_list[1], 'bedfile':row_list[2]]
     }
-    return(param_map)
+    //return(param_map)
 }
 
 @preserve("*.bed")
@@ -96,7 +98,8 @@ generate_vcf = {
                 python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix --stutter $STUTTER > $output.txt
         """
         File all_params = new File( output.txt )
-        branch.param_map = parse_parameters(all_params)
+        //branch.param_map = parse_parameters(all_params)
+        parse_parameters(all_params)
         }
     }
 }
@@ -118,7 +121,9 @@ mutate_ref = {
     output.dir = "fasta"
 
         // Set target coverage for this stutter allele
-        branch.coverage = branch.param_map["$input.vcf"]["probability"].toDouble() * total_coverage
+        //println("$name $input.vcf $param_map")
+        //branch.coverage = branch.param_map["$input.vcf"]["probability"].toDouble() * total_coverage
+        branch.coverage = param_map["$input.vcf"]["probability"].toDouble() * total_coverage
         //branch.bedfile = branch.param_map["$input.vcf"]["bedfile"]
     exec """
         java -Xmx4g -jar $GATK
@@ -245,7 +250,7 @@ trim_variants = {
 // Run pipeline
 
 // Adjust number of variants to simulate here
-simID = (1..2)
+simID = (1..100)
 
 run {
 // Generate bed file of loci to simulate. One locus pathogenic per file (rest normal range).
@@ -253,10 +258,9 @@ run {
 // Also one bed file of all the remaining loci (not in the above file) with normal ranges (background).
 
 
-    [ mutate_background,
-        simID * [mutate_locus] ] +
+    simID * [
 
-    "%.bed" * [
+        mutate_locus  +
 
         sort_bed +
         generate_vcf +
