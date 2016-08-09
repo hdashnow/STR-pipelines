@@ -221,3 +221,5 @@ if (interval != 'all') {
 # # Generate pathogenic variants of a range of sizes
 # random.path$genotype = sapply(random.path$copyNum, generate.rand.path.genotype, 
 #                               coding.sd, max.allele = 1000)
+
+quit()

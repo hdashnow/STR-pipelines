@@ -71,8 +71,9 @@ mutate_locus = {
 @filter("sorted")
 sort_bed = {
     doc "sort bed file"
+    output.dir = "sim_bed"
     branch.source_bed = input.bed
-
+    
     preserve("*.bed") {
         exec """
             bedtools sort -i $input.bed -faidx $CHR_ORDER > $output.bed
