@@ -62,7 +62,7 @@ mutate_locus = {
                 -L chr2:233712201-233712246
                 /mnt/storage/harrietd/git/STR-pipelines/simulate_reads/reference-data/hg19.simpleRepeat.txt.gz
                 /mnt/storage/harrietd/git/STR-pipelines/simulate_reads/reference-data/str-stats
-                > $output.bed
+                -O $output.bed
         """
 
     }
@@ -73,7 +73,7 @@ sort_bed = {
     doc "sort bed file"
     output.dir = "sim_bed"
     branch.source_bed = input.bed
-    
+
     preserve("*.bed") {
         exec """
             bedtools sort -i $input.bed -faidx $CHR_ORDER > $output.bed
@@ -245,7 +245,7 @@ trim_variants = {
 // Run pipeline
 
 // Adjust number of variants to simulate here
-simID = (1..10)
+simID = (1..2)
 
 run {
 // Generate bed file of loci to simulate. One locus pathogenic per file (rest normal range).
@@ -253,8 +253,8 @@ run {
 // Also one bed file of all the remaining loci (not in the above file) with normal ranges (background).
 
 
-    mutate_background +
-    simID * [mutate_locus] +
+    [ mutate_background,
+        simID * [mutate_locus] ] +
 
     "%.bed" * [
 
