@@ -42,7 +42,7 @@ mutate_background = {
                 -L chr2:233712201-233712246
                 /mnt/storage/harrietd/git/STR-pipelines/simulate_reads/reference-data/hg19.simpleRepeat.txt.gz
                 /mnt/storage/harrietd/git/STR-pipelines/simulate_reads/reference-data/str-stats
-                --background $output.bed
+                --background $output.bed > /dev/null
         """
 
     }

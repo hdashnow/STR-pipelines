@@ -103,7 +103,8 @@ generate.uniform.genotypes = function(min.allele, max.allele, ref.allele, n=2) {
 
 generate.rand.path.genotype = function(copyNum, coding.sd, max.allele = 1000) {
   
-  norm.allele = round(rtruncnorm(1, a=-ceiling(copyNum), b=Inf, mean=0, sd=coding.sd))
+#  norm.allele = round(rtruncnorm(1, a=-ceiling(copyNum), b=Inf, mean=0, sd=coding.sd))
+  norm.allele = ceiling(copyNum) # Set norm.allele to reference allele so don't have to worry about having enough copies of the repeat unit to delete. This is a problem for impure loci.
   path.allele = round(generate.uniform.genotypes(min.allele=copyNum, max.allele, 
                                                  ref.allele=copyNum, n=1))
   allele = paste(norm.allele, path.allele, sep='/')
