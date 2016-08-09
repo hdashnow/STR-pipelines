@@ -186,12 +186,12 @@ join_mapped = {
     doc "join mapped coordinate with STR length using read name"
     output.dir = "align"
 
-    //from("txt","RF") transform("j") {
+    from("RF","renamed.txt") transform("j") {
         exec """
-            python $GALAXY_TOOLS/filters/join.py $input.txt $input.RF 6 1 $output.j "" "" 
+            python $GALAXY_TOOLS/filters/join.py $input2 $input1 6 1 $output "" "" 
                 --index_depth=3 --buffer=50000000 --fill_options_file='None'
          """
-    //}
+    }
 }
 
 // Still more steps to go... 
