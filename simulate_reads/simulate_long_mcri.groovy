@@ -99,6 +99,7 @@ generate_vcf = {
         """
         File all_params = new File( output.txt )
         //branch.param_map = parse_parameters(all_params)
+        new File("$output.dir").listFiles()
         parse_parameters(all_params)
         }
     }
