@@ -192,51 +192,41 @@ index_bam = {
 }
 
 
+DECOY_REF="/mnt/storage/harrietd/git/STR-pipelines/simulate_reads/reference-data/ucsc.hg19.STRdecoys.fasta"
+BACKGROUND_R1="/mnt/storage/harrietd/git/STR-pipelines/simulate_reads/simulate_exome/background_coding_path_STR/fastq/background.sorted.0.5_1.stutter.merged_L001_R1.fastq.gz"
+BACKGROUND_R2="/mnt/storage/harrietd/git/STR-pipelines/simulate_reads/simulate_exome/background_coding_path_STR/fastq/background.sorted.0.5_1.stutter.merged_L001_R2.fastq.gz"
 PLATFORM='illumina'
-
 threads=8
 
 @preserve("*.bam")
 align_bwa = {
-    doc "Align with bwa mem algorithm."
+    doc "Concatenate with background reads then align with bwa mem algorithm."
 
     def fastaname = get_fname(REF)
     from('fastq.gz', 'fastq.gz') produce(fastaname.prefix + '.' + get_fname(branch.source_bed).prefix + '.bam') {
         exec """
             bwa mem -M -t $threads
             -R "@RG\\tID:${sample}\\tPL:$PLATFORM\\tPU:1\\tLB:${sample}\\tSM:${sample}"
-            $REF $input1.gz $input2.gz |
+            $DECOY_REF
+            <(gzip -dc $BACKGROUND_R1 $input1.gz)
+            <(gzip -dc $BACKGROUND_R2 $input2.gz) |
             samtools view -bSuh - | samtools sort -o $output.bam -
         """, "bwamem"
     }
 }
 
-RealignerTargetCreator = {
-    transform("bam") to ("intervals") {
+@preserve("*.txt")
+STR_coverage = {
+    transform("bam") to ("coverage.txt") {
         exec """
-            java -Xmx2g -jar $GATK
-                -T RealignerTargetCreator
-                -R $REF
-                -I $input.bam
-                -o $output.intervals
+            bedtools coverage -counts
+            -a /mnt/storage/harrietd/git/STR-pipelines/simulate_reads/reference-data/STRdecoys.bed
+            -b $input.bam > $output.txt
         """
     }
-    forward input
 }
 
-@filter("realigned")
-IndelRealigner = {
-    exec """
-        java -Xmx4g -jar $GATK
-            -T IndelRealigner
-            -R $REF
-            -I $input.bam
-            -targetIntervals $input.intervals
-            -o $output.bam
-            --consensusDeterminationModel USE_SW
-            --maxPositionalMoveAllowed 500
-    """
-}
+
 
 // -O v for vcf, -O z for vcf.gz
 // Also, sort.
@@ -276,8 +266,8 @@ run {
 
         '%_R*.fastq.gz' * [
             set_sample_info +
-            align_bwa + index_bam //+
-    //        RealignerTargetCreator + IndelRealigner
+            align_bwa + index_bam +
+            STR_coverage
         ] +
 
         "%.truth.vcf" * [ trim_variants ]
