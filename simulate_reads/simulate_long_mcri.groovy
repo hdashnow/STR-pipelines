@@ -98,7 +98,6 @@ generate_vcf = {
                 python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix --stutter $STUTTER > $output.txt
         """
         File all_params = new File( output.txt )
-        //branch.param_map = parse_parameters(all_params)
         new File("$output.dir").listFiles()
         parse_parameters(all_params)
         }
@@ -122,10 +121,8 @@ mutate_ref = {
     output.dir = "fasta"
 
         // Set target coverage for this stutter allele
-        //println("$name $input.vcf $param_map")
-        //branch.coverage = branch.param_map["$input.vcf"]["probability"].toDouble() * total_coverage
         branch.coverage = param_map["$input.vcf"]["probability"].toDouble() * total_coverage
-        //branch.bedfile = branch.param_map["$input.vcf"]["bedfile"]
+
     exec """
         java -Xmx4g -jar $GATK
             -T FastaAlternateReferenceMaker
