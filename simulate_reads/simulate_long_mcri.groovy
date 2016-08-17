@@ -203,7 +203,7 @@ align_bwa = {
     doc "Concatenate with background reads then align with bwa mem algorithm."
 
     def fastaname = get_fname(REF)
-    from('fastq.gz', 'fastq.gz') produce(fastaname.prefix + '.' + get_fname(branch.source_bed).prefix + '.bam') {
+    from('fastq.gz', 'fastq.gz') produce(branch.name + '.bam') {
         exec """
             bwa mem -M -t $threads
             -R "@RG\\tID:${sample}\\tPL:$PLATFORM\\tPU:1\\tLB:${sample}\\tSM:${sample}"
