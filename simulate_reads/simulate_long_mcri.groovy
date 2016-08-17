@@ -260,7 +260,7 @@ run {
             merge_bed + mutate_ref + generate_reads
         ] +
 
-        "*.stutter.*_R%.fq" * [
+        "%.stutter.merged_L001_R*.fq" * [
             combine_gzip
         ] +
 
