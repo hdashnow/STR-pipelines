@@ -1,0 +1,9 @@
+##fileformat=VCFv4.1
+##fileDate=20160316
+##source=ManuallyConstructed
+##reference=ucsc.hg19.fasta
+##INFO=<ID=RU,Number=1,Type=String,Description="Repeat Unit">
+##INFO=<ID=RL,Number=1,Type=Integer,Description="Reference Length of Repeat">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE
+chr6	16327865	.	T	TGCTGCTGCTGCTGCTGCTGCTGCTGCTGCT	.	PASS	RU=GCT;RL=29	GT	1/1
