@@ -97,8 +97,9 @@ generate_vcf = {
             exec """
                 python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix --stutter $STUTTER > $output.txt
         """
-        File all_params = new File( output.txt )
+
         new File("$output.dir").listFiles()
+        File all_params = new File( output.txt )
         parse_parameters(all_params)
         }
     }
