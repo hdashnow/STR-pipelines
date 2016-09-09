@@ -45,10 +45,12 @@ sort_bam = {
     }
 }
 
-
 @transform("vcf")
-allelotype = {
-    transform('.bam') to('.lobstr.vcf', '.lobstr.allelotype.stats') {
+allelotype_single = {
+
+    doc "Run LobSTR allelotyper STR calling on a single bam file at a time"
+
+    from('.bam') transform('.lobstr.vcf', '.lobstr.allelotype.stats') {
         def outname = output.prefix[0..-2]
         exec """
             allelotype \
@@ -62,13 +64,37 @@ allelotype = {
     }
 }
 
+@transform("vcf")
+allelotype_multi = {
+
+    doc "Run LobSTR allelotyper STR calling on multiple bam files at the same time"
+
+    from('*.bam') transform('.lobstr.vcf', '.lobstr.allelotype.stats') {
+        def outname = output.prefix[0..-2]
+        def infiles = inputs.join(',')
+        exec """
+            allelotype \
+              --command classify \
+              --bam $infiles \
+              --noise_model $LOBSTR_CODE/models/illumina_v3.pcrfree \
+              --out $output1.prefix \
+              --strinfo $LOBSTR_STRINFO \
+              --index-prefix $LOBSTR_REF
+        """, "medium"
+    }
+}
 
 run {
     "%.bam" * [
-        //set_sample_info +
-        allelotype
+        allelotype_single
     ]
 }
+
+//run {
+//    [
+//        allelotype_multi
+//    ]
+//}
 
 
 
