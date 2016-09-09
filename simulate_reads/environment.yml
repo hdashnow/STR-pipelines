@@ -1,6 +1,8 @@
 name: STR
+channels:
+- bioconda
 dependencies:
-- python=3.4*
+- python=3*
 - BioPython
 - PyVCF
 - pysam
