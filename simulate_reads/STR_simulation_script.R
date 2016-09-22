@@ -1,8 +1,8 @@
 #!/usr/bin/env Rscript
 
-# Generate a file containing STRs in interesting regions (e.g. coding) 
-# Generate normal mutants of these based on the distribution of allele sizes in the reference genome
-# Generate pathogenic 
+# Generate a file containing STRs in interesting regions (e.g. coding)
+# Generate pathogenic mutants in a single locus or all loci
+# Generate normal mutants of all other loci based on the distribution of allele sizes in the reference genome
 
 suppressPackageStartupMessages({
   library('argparse', quietly=TRUE)
@@ -18,6 +18,9 @@ parser$add_argument("-L", "--interval", type="character", default="all",
                     metavar="LOCUS")
 parser$add_argument("-b", "--background", type="character",
                     help="In the case where -L is used, also mutate all other loci in the normal range and save to this file.",
+                    metavar="FILE")
+parser$add_argument("-m", "--max", type="integer", default=1000,
+                    help="Maximum pathogenic mutant allele to simulate (in repeat units).",
                     metavar="FILE")
 parser$add_argument("-O", "--output", type="character", default="stdout",
                     help="Ouput bed file name. [default %(default)s]",
@@ -37,7 +40,7 @@ str.is.integer = function(x) {
   return(FALSE)
 }
 
-# Still needs some work. Situation where missing values in any postion can cause errors, 
+# Still needs some work. Situation where missing values in any postion can cause errors,
 # also start < end not tested for
 is.region = function(region) {
   colonsplit = strsplit(region, ':')
@@ -63,7 +66,9 @@ if (args$output == 'stdout') {
   output_bed = args$output
 }
 
-# Load packages after dealing with commandline input because it takes a while 
+max_path = args$max
+
+# Load packages after dealing with commandline input because it takes a while
 # (so delay when just using --help)
 suppressPackageStartupMessages({
   library('scales', quietly=TRUE)
@@ -80,7 +85,7 @@ suppressPackageStartupMessages({
 parse_multiple_beds = function(files.vect) {
   df = NULL
   for (f in all.files) {
-    bed = read.delim(f, header=FALSE, 
+    bed = read.delim(f, header=FALSE,
                      col.names = c("chrom", "start", "end"))
     fname = tail(strsplit(f, '/')[[1]], 1)
     region = substr(fname, 13, nchar(fname) - 9)
@@ -101,11 +106,11 @@ generate.uniform.genotypes = function(min.allele, max.allele, ref.allele, n=2) {
   return(alleles)
 }
 
-generate.rand.path.genotype = function(copyNum, coding.sd, max.allele = 1000) {
-  
+generate.rand.path.genotype = function(copyNum, coding.sd, max.allele = max_path) {
+
 #  norm.allele = round(rtruncnorm(1, a=-ceiling(copyNum), b=Inf, mean=0, sd=coding.sd))
   norm.allele = ceiling(copyNum) # Set norm.allele to reference allele so don't have to worry about having enough copies of the repeat unit to delete. This is a problem for impure loci.
-  path.allele = round(generate.uniform.genotypes(min.allele=copyNum, max.allele, 
+  path.allele = round(generate.uniform.genotypes(min.allele=copyNum, max.allele,
                                                  ref.allele=copyNum, n=1))
   allele = paste(norm.allele, path.allele, sep='/')
   return(allele)
@@ -113,7 +118,7 @@ generate.rand.path.genotype = function(copyNum, coding.sd, max.allele = 1000) {
 
 # Write positions and genotypes back to file in bed format
 # Assume df has columns: seqnames,start,end,sequence,genotype[,gene]
-df.to.bed = function(df,outfile) { 
+df.to.bed = function(df,outfile) {
   out.df = df[,c('seqnames','start','end')]
   out.df$start = out.df$start - 1 # To bed format indexing, assuming df has is Granges indexing
   if ('gene' %in% names(df)) {
@@ -136,9 +141,9 @@ parse.interval = function(interval) {
 ## Main
 
 # Microsatellite data
-msats = read.delim(TRF.file, header=FALSE, 
-                   col.names = c("bin", "chrom", "chromStart", "chromEnd", "name", "period", 
-                                 "copyNum", "consensusSize", "perMatch", "perIndel", "score", 
+msats = read.delim(TRF.file, header=FALSE,
+                   col.names = c("bin", "chrom", "chromStart", "chromEnd", "name", "period",
+                                 "copyNum", "consensusSize", "perMatch", "perIndel", "score",
                                  "A", "C", "G", "T", "entropy", "sequence"))
 msats = msats[msats$period<=6,]
 msats$length.bp = msats$period * msats$copyNum # Calculate length in bp
@@ -149,7 +154,7 @@ all.refseq = parse_multiple_beds(all.files)
 
 # Get STRs in coding regions (some code from TRF.R)
 
-# BED format is base zero, and the end position is +1 (like python indexing). 
+# BED format is base zero, and the end position is +1 (like python indexing).
 # So to convert from bed format to GRanges: start + 1
 # sorting seqlevels (i.e. chomosome names) so that all GR objects will have same chromosome ordering.
 msats.GR = with(msats, GRanges(chrom, IRanges(chromStart + 1, chromEnd),period = period, copyNum=copyNum, sequence= sequence))
@@ -176,7 +181,7 @@ df.list = lapply(msats.GR.ann, mcols)
 # Merge together all dfs into a single one
 df.all <- ldply(df.list, data.frame)
 
-# Just get the STRs in coding regions 
+# Just get the STRs in coding regions
 coding.GR = msats.GR.ann[['coding']]
 
 # See what the copy number distribution looks like. Use this for simulation
@@ -197,9 +202,9 @@ if (interval != 'all') {
   locus.row = which(coding.df$seqnames == chrom & coding.df$start == start & coding.df$end == end)
   path.df = coding.df[locus.row,]
   # Just assuming this will be one row for not, may not generalise
-  path.df$genotype = generate.rand.path.genotype(path.df[,'copyNum'], coding.sd, max.allele = 1000) 
+  path.df$genotype = generate.rand.path.genotype(path.df[,'copyNum'], coding.sd, max.allele = max_path)
   df.to.bed(path.df, output_bed)
-  # If --background option, 
+  # If --background option,
   if (!is.null(args$background)) {
     background.bed = args$background
     background.df = coding.df[-locus.row,]
@@ -208,7 +213,7 @@ if (interval != 'all') {
 } else {
   #XXX Could potentially replace the one locus with the pathogenic one, but this isn't in the commandline options currently
   # Replace genotype on this row with a random, potentially pathogenic one
-  #coding.df$genotype[locus.row] = generate.rand.path.genotype(coding.df[locus.row,'copyNum'], coding.sd, max.allele = 1000) 
+  #coding.df$genotype[locus.row] = generate.rand.path.genotype(coding.df[locus.row,'copyNum'], coding.sd, max.allele = max_path)
   df.to.bed(coding.df, output_bed)
 }
 
@@ -216,11 +221,11 @@ if (interval != 'all') {
 
 #XXX another idea, not coded in options
 # ### Generate pathogenic length genotypes at all coding STR loci
-# 
+#
 # # Make a copy of the data frame containing info for all coding STR loci
 # random.path = data.frame(coding.df)
 # # Generate pathogenic variants of a range of sizes
-# random.path$genotype = sapply(random.path$copyNum, generate.rand.path.genotype, 
-#                               coding.sd, max.allele = 1000)
+# random.path$genotype = sapply(random.path$copyNum, generate.rand.path.genotype,
+#                               coding.sd, max.allele = max_path)
 
 quit()
