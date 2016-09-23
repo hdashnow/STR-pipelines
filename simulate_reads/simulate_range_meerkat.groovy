@@ -7,7 +7,6 @@
 ART='/group/bioi1/harrietd/src/art_bin_MountRainier'
 REF='/group/bioi1/shared/genomes/hg19/gatk/bwamem/gatk.ucsc.hg19.fasta'
 CHR_ORDER='/group/bioi1/shared/genomes/hg19/gatk/gatk.ucsc.hg19.chr_order.txt'
-GATK=$GATKDIR
 TOOLS='/group/bioi1/harrietd/git/STR-pipelines/simulate_reads'
 STUTTER='/group/bioi1/harrietd/git/STR-pipelines/simulate_reads/no_stutter_model.csv'
 
@@ -142,7 +141,7 @@ merge_bed = {
     output.dir = "vcf_bed"
 
     exec """
-        cat $EXOME_TARGET $input.bed | bedtools merge -i stdin > $output.bed
+        cat $EXOME_TARGET $input.bed | bedtools sort -i stdin | bedtools merge -i stdin > $output.bed
     """
 }
 
@@ -155,7 +154,7 @@ mutate_ref = {
         branch.coverage = param_map["$input.vcf"]["probability"].toDouble() * total_coverage
 
     exec """
-        java -Xmx4g -jar $GATK
+        java -Xmx4g -jar $GATKDIR/GenomeAnalysisTK.jar
             -T FastaAlternateReferenceMaker
             -R $REF
             -o $output.fasta
@@ -261,7 +260,7 @@ trim_variants = {
     }
 }
 
-cleanup = { cleanup "*.fq", *.fastq.gz", "*.stutter.vcf", "*.stutter.bed" }
+//cleanup = { cleanup "*.fq", *.fastq.gz", "*.stutter.vcf", "*.stutter.bed" }
 
 /////////////////////////////
 // Run pipeline
