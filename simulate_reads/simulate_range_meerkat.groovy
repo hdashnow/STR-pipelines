@@ -141,11 +141,10 @@ generate_reads = {
 }
 
 combine_gzip = {
-
-    def ID = get_fname(input1).split(".")[0]
+    def ID = get_fname(input1).split("\\.")[0]
     output.dir = "fastq"
 
-    from('*.fq') produce(ID + '.fastq.gz') {
+    from('*.fq') produce(ID + input1.prefix[-8..-1] + '.fastq.gz') {
         preserve("*.gz") {
             exec "cat $inputs.fq | gzip -c > $output.gz"
         }
@@ -231,6 +230,8 @@ run {
         cat_bed +
         generate_vcf +
 
+        "%.truth.vcf" * [ trim_variants ] +
+
         "%.stutter.*" * [
             merge_bed + mutate_ref + generate_reads
         ]
@@ -244,9 +245,7 @@ run {
             set_sample_info +
             align_bwa + index_bam +
             STR_coverage
-        ] +
-
-        "%.truth.vcf" * [ trim_variants ] //+
+        ] //+
 
         //cleanup
 }
