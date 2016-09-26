@@ -54,6 +54,8 @@ is.region = function(region) {
 if (args$interval == 'all') {
   #output_bed = 'coding_path_STR.bed'
   interval = args$interval
+  } else if (args$interval == 'random') {
+    interval = args$interval
   } else if (!is.region(args$interval)) {
     warning("Region is in the incorrect format. It should be chr1:100-200.")
   } else {
@@ -196,7 +198,7 @@ coding.df$genotype = sapply(coding.df$copyNum, generate.genotype, coding.sd)
 ### Choose one locus and generate heterozygous pathogenic range genotype
 if (interval != 'all') {
   if (interval == 'random') {
-    locus.row = sample.int(nrows(coding.df), 1)
+    locus.row = sample.int(nrow(coding.df), 1)
   } else {
     interval.list = parse.interval(interval)
     chrom = interval.list[1]
