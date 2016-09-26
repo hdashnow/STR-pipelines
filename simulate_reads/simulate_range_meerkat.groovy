@@ -23,7 +23,6 @@ def get_fname(path) {
     return(x)
 }
 
-
 param_map = [:] //Define outside function so one big map for all branches
 
 // Parses tab-delmited table of filenames and their corresponding parameters
@@ -37,45 +36,6 @@ def parse_parameters(all_parameters) {
         param_map[row_list[0]] = ['probability':row_list[1], 'bedfile':row_list[2]]
     }
     //return(param_map)
-}
-
-@preserve("*.bed")
-mutate_background = {
-    doc """ Generate a set of coding STR loci in the normal range.
-        Exclude one locus that will be simulated as variable."""
-
-    output.dir = "sim_bed"
-
-    produce('background.bed') {
-        exec """
-            /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/STR_simulation_script.R
-                -L chr2:233712201-233712246
-                /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/hg19.simpleRepeat.txt.gz
-                /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/str-stats
-                --background $output.bed > /dev/null
-        """
-
-    }
-}
-
-@preserve("*.bed")
-mutate_locus = {
-    doc """Generate a random heterozygous coding STR loci in the potentially
-        pathogenic range."""
-
-    output.dir = "sim_bed"
-    branch.simID = branch.name
-
-    produce(branch.simID + '.bed') {
-        exec """
-            /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/STR_simulation_script.R
-                -L chr2:233712201-233712246
-                /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/hg19.simpleRepeat.txt.gz
-                /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/str-stats
-                -O $output.bed
-        """
-
-    }
 }
 
 @preserve("*.bed")
@@ -110,18 +70,6 @@ cat_bed = {
     }
 }
 
-@filter("sorted")
-sort_bed = {
-    doc "sort bed file"
-    output.dir = "sim_bed"
-    branch.source_bed = input.bed
-
-    preserve("*.bed") {
-        exec """
-            bedtools sort -i $input.bed -faidx $CHR_ORDER > $output.bed
-        """
-    }
-}
 
 /////////////////////////////
 // Produce mutated fasta file
@@ -144,7 +92,6 @@ generate_vcf = {
         }
     }
 }
-
 
 @filter("merged")
 merge_bed = {
@@ -205,14 +152,6 @@ combine_gzip = {
     }
 }
 
-fastqc = {
-    doc "Run FASTQC to generate QC metrics for raw reads"
-    output.dir = "fastqc"
-
-    transform('.fastq.gz')  to('_fastqc.zip') {
-        exec "fastqc -o ${output.dir} $inputs.gz"
-    }
-}
 
 /////////////////////////////
 // Align reads
@@ -224,15 +163,6 @@ set_sample_info = {
     branch.sample = branch.name
     branch.lane = 001
     }
-
-@preserve("*.bai")
-index_bam = {
-    transform("bam") to ("bam.bai") {
-        exec "samtools index $input.bam"
-    }
-    forward input
-}
-
 
 threads=8
 
@@ -253,6 +183,14 @@ align_bwa = {
     }
 }
 
+@preserve("*.bai")
+index_bam = {
+    transform("bam") to ("bam.bai") {
+        exec "samtools index $input.bam"
+    }
+    forward input
+}
+
 @preserve("*.txt")
 STR_coverage = {
     transform("bam") to ("coverage.txt") {
@@ -263,8 +201,6 @@ STR_coverage = {
         """
     }
 }
-
-
 
 // -O v for vcf, -O z for vcf.gz
 // Also, sort.
@@ -297,7 +233,7 @@ run {
 
         "%.stutter.*" * [
             merge_bed + mutate_ref + generate_reads
-        ] 
+        ]
      ] +
 
         "%.all.*.stutter.merged_L001_R%.fq" * [
@@ -313,6 +249,4 @@ run {
         "%.truth.vcf" * [ trim_variants ] //+
 
         //cleanup
-
-    //]
 }
