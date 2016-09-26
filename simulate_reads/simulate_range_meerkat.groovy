@@ -49,7 +49,7 @@ mutate_all = {
     produce(branch.simID + '.mutant.bed', branch.simID + '.background.bed') {
         exec """
             /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/STR_simulation_script.R
-                -L chr2:233712201-233712246
+                -L random
                 /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/hg19.simpleRepeat.txt.gz
                 /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/str-stats
                 -O $output1.bed

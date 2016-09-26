@@ -193,17 +193,22 @@ coding.df = as.data.frame(coding.GR)
 coding.df$genotype = sapply(coding.df$copyNum, generate.genotype, coding.sd)
 #df.to.bed(coding.df, 'coding_normal_STR.bed')
 
-### Choose one locus and generate heterzygous pathogenic range genotype
+### Choose one locus and generate heterozygous pathogenic range genotype
 if (interval != 'all') {
-  interval.list = parse.interval(interval)
-  chrom = interval.list[1]
-  start = as.numeric(interval.list[2])
-  end = as.numeric(interval.list[3])
-  locus.row = which(coding.df$seqnames == chrom & coding.df$start == start & coding.df$end == end)
+  if (interval == 'random') {
+    locus.row = sample.int(nrows(coding.df), 1)
+  } else {
+    interval.list = parse.interval(interval)
+    chrom = interval.list[1]
+    start = as.numeric(interval.list[2])
+    end = as.numeric(interval.list[3])
+    locus.row = which(coding.df$seqnames == chrom & coding.df$start == start & coding.df$end == end)
+  }
   path.df = coding.df[locus.row,]
   # Just assuming this will be one row for not, may not generalise
   path.df$genotype = generate.rand.path.genotype(path.df[,'copyNum'], coding.sd, max.allele = max_path)
   df.to.bed(path.df, output_bed)
+
   # If --background option,
   if (!is.null(args$background)) {
     background.bed = args$background
