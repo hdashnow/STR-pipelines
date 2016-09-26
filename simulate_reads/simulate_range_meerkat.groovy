@@ -10,7 +10,7 @@ CHR_ORDER='/group/bioi1/shared/genomes/hg19/gatk/gatk.ucsc.hg19.chr_order.txt'
 TOOLS='/group/bioi1/harrietd/git/STR-pipelines/simulate_reads'
 STUTTER='/group/bioi1/harrietd/git/STR-pipelines/simulate_reads/no_stutter_model.csv'
 
-DECOY_REF="/group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/ucsc.hg19.STRdecoys.fasta"
+DECOY_REF="/group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/hg19.STRdecoys.fasta"
 BACKGROUND_R1="/group/bioi1/harrietd/git/STR-pipelines/simulate_reads/simulate_exome/background_coding_path_STR/fastq/background.sorted.0.5_1.stutter.merged_L001_R1.fastq.gz"
 BACKGROUND_R2="/group/bioi1/harrietd/git/STR-pipelines/simulate_reads/simulate_exome/background_coding_path_STR/fastq/background.sorted.0.5_1.stutter.merged_L001_R2.fastq.gz"
 EXOME_TARGET="/group/bioi1/harrietd/ref-data/hg19_RefSeq_coding.bed"
@@ -86,16 +86,27 @@ mutate_all = {
     output.dir = "sim_bed"
     branch.simID = branch.name
 
-    produce(branch.simID + '.bed') {
+    produce(branch.simID + '.mutant.bed', branch.simID + '.background.bed') {
         exec """
             /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/STR_simulation_script.R
                 -L chr2:233712201-233712246
                 /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/hg19.simpleRepeat.txt.gz
                 /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/str-stats
-                --background $output.bed
-                -O $output.bed
+                -O $output1.bed
+                --background $output2.bed
         """
 
+    }
+}
+
+cat_bed = {
+    doc "combine multiple bed files and sort them"
+    output.dir = "sim_bed"
+
+    produce(branch.simID + '.all.bed') {
+        exec """
+            cat $inputs.bed | bedtools sort -faidx $CHR_ORDER -i stdin  > $output.bed
+        """
     }
 }
 
@@ -141,7 +152,7 @@ merge_bed = {
     output.dir = "vcf_bed"
 
     exec """
-        cat $EXOME_TARGET $input.bed | bedtools sort -i stdin | bedtools merge -i stdin > $output.bed
+        cut -f 1,2,3,4 $EXOME_TARGET | cat - $input.bed | bedtools sort -i stdin | bedtools merge -i stdin > $output.bed
     """
 }
 
@@ -160,7 +171,7 @@ mutate_ref = {
             -o $output.fasta
             -L $input.bed
             -V $input.vcf
-    ""","quick"
+    """
 }
 
 
@@ -178,14 +189,18 @@ generate_reads = {
                 -l 150 -ss HS25 -f $branch.coverage
                 -m 500 -s 50
                 -o $outname
-        ""","quick"
+        """
     }
 }
 
 combine_gzip = {
-    from('*.fq') produce(input.fq.prefix + '.fastq.gz') {
+
+    def ID = get_fname(input1).split(".")[0]
+    output.dir = "fastq"
+
+    from('*.fq') produce(ID + '.fastq.gz') {
         preserve("*.gz") {
-            exec "cat $inputs.fq | gzip -c > $output.gz","small"
+            exec "cat $inputs.fq | gzip -c > $output.gz"
         }
     }
 }
@@ -195,7 +210,7 @@ fastqc = {
     output.dir = "fastqc"
 
     transform('.fastq.gz')  to('_fastqc.zip') {
-        exec "fastqc -o ${output.dir} $inputs.gz","medium"
+        exec "fastqc -o ${output.dir} $inputs.gz"
     }
 }
 
@@ -213,7 +228,7 @@ set_sample_info = {
 @preserve("*.bai")
 index_bam = {
     transform("bam") to ("bam.bai") {
-        exec "samtools index $input.bam", "medium"
+        exec "samtools index $input.bam"
     }
     forward input
 }
@@ -276,16 +291,16 @@ run {
 
     simID * [
 
-        mutate_locus  +
-
-        sort_bed +
+        mutate_all  +
+        cat_bed +
         generate_vcf +
 
         "%.stutter.*" * [
             merge_bed + mutate_ref + generate_reads
-        ] +
+        ] 
+     ] +
 
-        "%.sorted.*.stutter.merged_L001_R%.fq" * [
+        "%.all.*.stutter.merged_L001_R%.fq" * [
             combine_gzip
         ] +
 
@@ -299,5 +314,5 @@ run {
 
         //cleanup
 
-    ]
+    //]
 }
