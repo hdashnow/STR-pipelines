@@ -11,8 +11,6 @@ TOOLS='/group/bioi1/harrietd/git/STR-pipelines/simulate_reads'
 STUTTER='/group/bioi1/harrietd/git/STR-pipelines/simulate_reads/no_stutter_model.csv'
 
 DECOY_REF="/group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/hg19.STRdecoys.fasta"
-BACKGROUND_R1="/group/bioi1/harrietd/git/STR-pipelines/simulate_reads/simulate_exome/background_coding_path_STR/fastq/background.sorted.0.5_1.stutter.merged_L001_R1.fastq.gz"
-BACKGROUND_R2="/group/bioi1/harrietd/git/STR-pipelines/simulate_reads/simulate_exome/background_coding_path_STR/fastq/background.sorted.0.5_1.stutter.merged_L001_R2.fastq.gz"
 EXOME_TARGET="/group/bioi1/harrietd/ref-data/hg19_RefSeq_coding.bed"
 
 PLATFORM='illumina'
@@ -82,7 +80,10 @@ generate_vcf = {
 
     preserve("*.truth.vcf") {
         produce(bedname.prefix + ".truth.vcf", "*.stutter.vcf", bedname.prefix + ".txt", "*.stutter.bed") {
+            new File("/group/bioi1/harrietd/src/miniconda3/bin").listFiles()
+
             exec """
+                source activate STR;
                 python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix --stutter $STUTTER > $output.txt
         """
 
@@ -175,8 +176,8 @@ align_bwa = {
             bwa mem -M -t $threads
             -R "@RG\\tID:${sample}\\tPL:$PLATFORM\\tPU:1\\tLB:${sample}\\tSM:${sample}"
             $DECOY_REF
-            <(gzip -dc $BACKGROUND_R1 $input1.gz)
-            <(gzip -dc $BACKGROUND_R2 $input2.gz) |
+            $input1.gz
+            $input2.gz |
             samtools view -bSuh - | samtools sort -o $output.bam -
         """, "bwamem"
     }
@@ -210,13 +211,13 @@ trim_variants = {
     }
 }
 
-//cleanup = { cleanup "*.fq", *.fastq.gz", "*.stutter.vcf", "*.stutter.bed" }
+clean_intermediates = { cleanup "*.fq", "*.fastq.gz", "*.stutter.vcf", "*.stutter.bed" "*.stutter.merged.fasta"}
 
 /////////////////////////////
 // Run pipeline
 
 // Adjust number of variants to simulate here
-simID = (1..5)
+simID = (1..100)
 
 run {
 // Generate bed file of loci to simulate. One locus pathogenic per file (rest normal range).
@@ -245,7 +246,7 @@ run {
             set_sample_info +
             align_bwa + index_bam +
             STR_coverage
-        ] //+
+        ] +
 
-        //cleanup
+        clean_intermediates
 }
