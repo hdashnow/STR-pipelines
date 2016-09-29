@@ -27,13 +27,11 @@ param_map = [:] //Define outside function so one big map for all branches
 // Returns these as a map that can be used to get the correct parameter as a branch variable
 def parse_parameters(all_parameters) {
 
-    lines = all_parameters.readLines()
-
+    def lines = all_parameters.readLines()
     lines.each {
-        row_list = it.split()
+        def row_list = it.split()
         param_map[row_list[0]] = ['probability':row_list[1], 'bedfile':row_list[2]]
     }
-    //return(param_map)
 }
 
 @preserve("*.bed")
@@ -80,16 +78,16 @@ generate_vcf = {
 
     preserve("*.truth.vcf") {
         produce(bedname.prefix + ".truth.vcf", "*.stutter.vcf", bedname.prefix + ".txt", "*.stutter.bed") {
-            new File("/group/bioi1/harrietd/src/miniconda3/bin").listFiles()
 
             exec """
-                source activate STR;
-                python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix --stutter $STUTTER > $output.txt
+                /group/bioi1/harrietd/src/miniconda3/envs/STR/bin/python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix --stutter $STUTTER > $output.txt
         """
-
+        
+        // Add settings for this branch param_map
         new File("$output.dir").listFiles()
-        File all_params = new File( output.txt )
+        def File all_params = new File( output.txt )
         parse_parameters(all_params)
+
         }
     }
 }
@@ -108,9 +106,6 @@ merge_bed = {
 mutate_ref = {
     doc "Generate a version of the reference genome (or subset) with mutations given by the input VCF"
     output.dir = "fasta"
-
-        // Set target coverage for this stutter allele
-        branch.coverage = param_map["$input.vcf"]["probability"].toDouble() * total_coverage
 
     exec """
         java -Xmx4g -jar $GATKDIR/GenomeAnalysisTK.jar
@@ -131,10 +126,13 @@ generate_reads = {
     output.dir = "fastq"
 
     produce( get_fname(input.fasta.prefix) + '_L001_R1.fq', get_fname(input.fasta.prefix) + '_L001_R2.fq') {
+
+        // Set target coverage for this stutter allele
+        def coverage = param_map["$input.vcf"]["probability"].toDouble() * total_coverage
         def outname = output.prefix[0..-2]
         exec """
             $ART/art_illumina -i $input.fasta -p -na
-                -l 150 -ss HS25 -f $branch.coverage
+                -l 150 -ss HS25 -f $coverage
                 -m 500 -s 50
                 -o $outname
         """
@@ -217,7 +215,7 @@ clean_intermediates = { cleanup "*.fq", "*.fastq.gz", "*.stutter.vcf", "*.stutte
 // Run pipeline
 
 // Adjust number of variants to simulate here
-simID = (1..100)
+simID = (6..10)
 
 run {
 // Generate bed file of loci to simulate. One locus pathogenic per file (rest normal range).
