@@ -176,7 +176,7 @@ align_bwa = {
             $DECOY_REF
             $input1.gz
             $input2.gz |
-            samtools view -bSuh - | samtools sort -o $output.bam -
+            samtools view -bSuh - | samtools sort -o $output.bam -T $output.bam.prefix
         """, "bwamem"
     }
 }
@@ -215,7 +215,7 @@ clean_intermediates = { cleanup "*.fq", "*.fastq.gz", "*.stutter.vcf", "*.stutte
 // Run pipeline
 
 // Adjust number of variants to simulate here
-simID = (6..10)
+simID = (1..50)
 
 run {
 // Generate bed file of loci to simulate. One locus pathogenic per file (rest normal range).
