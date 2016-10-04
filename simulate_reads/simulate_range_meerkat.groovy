@@ -10,8 +10,8 @@ CHR_ORDER='/group/bioi1/shared/genomes/hg19/gatk/gatk.ucsc.hg19.chr_order.txt'
 TOOLS='/group/bioi1/harrietd/git/STR-pipelines/simulate_reads'
 STUTTER='/group/bioi1/harrietd/git/STR-pipelines/simulate_reads/no_stutter_model.csv'
 
-DECOY_REF="/group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/hg19.STRdecoys.fasta"
-EXOME_TARGET="/group/bioi1/harrietd/ref-data/hg19_RefSeq_coding.bed"
+DECOY_REF="/group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/hg19.STRdecoys.sorted.fasta"
+EXOME_TARGET="/group/bioi1/harrietd/ref-data/hg19_RefSeq_coding.sorted.bed"
 
 PLATFORM='illumina'
 total_coverage = 50
@@ -193,24 +193,23 @@ index_bam = {
     forward input
 }
 
-@preserve("*.txt")
 STR_coverage = {
-    transform("bam") to ("coverage.txt") {
+    transform("bam") to ("STR_counts") {
         exec """
             bedtools coverage -counts
             -a /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/STRdecoys.bed
-            -b $input.bam > $output.txt
+            -b $input.bam > $output.STR_counts
         """
     }
 }
 
 STR_locus_counts = {
-    transform("bam") to ("locus_counts.txt") {
+    transform("bam") to ("locus_counts") {
         exec """
             /group/bioi1/harrietd/src/miniconda3/envs/STR/bin/python /group/bioi1/harrietd/git/micro-genotyper-long/python_code/identify_locus.py
             --bam $input.bam
             --bed /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/hg19.simpleRepeat_period1-6.bed
-            --output $output.txt
+            --output $output.locus_counts
         """
     }
 }
@@ -220,7 +219,7 @@ coverage = {
     exec """
         bedtools coverage
             -sorted -d 
-            -g ${REF}.genome
+            -g ${DECOY_REF}.genome
             -a $EXOME_TARGET 
             -b $input.bam 
             > $output.coverage
@@ -248,7 +247,7 @@ clean_intermediates = { cleanup "*.fq", "*.fastq.gz", "*.stutter.vcf", "*.stutte
 // Run pipeline
 
 // Adjust number of variants to simulate here
-simID = (1..5)
+simID = (1..60)
 
 run {
 // Generate bed file of loci to simulate. One locus pathogenic per file (rest normal range).
