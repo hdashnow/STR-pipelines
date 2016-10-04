@@ -30,7 +30,7 @@ def parse_parameters(all_parameters) {
     def lines = all_parameters.readLines()
     lines.each {
         def row_list = it.split()
-        param_map[row_list[0]] = ['probability':row_list[1], 'bedfile':row_list[2]]
+        param_map[get_fname(row_list[0])] = ['probability':row_list[1], 'bedfile':row_list[2]]
     }
 }
 
@@ -100,6 +100,8 @@ merge_bed = {
     exec """
         cut -f 1,2,3,4 $EXOME_TARGET | cat - $input.bed | bedtools sort -i stdin | bedtools merge -i stdin > $output.bed
     """
+    
+    forward input
 }
 
 @Transform("fasta")
@@ -128,7 +130,8 @@ generate_reads = {
     produce( get_fname(input.fasta.prefix) + '_L001_R1.fq', get_fname(input.fasta.prefix) + '_L001_R2.fq') {
 
         // Set target coverage for this stutter allele
-        def coverage = param_map["$input.vcf"]["probability"].toDouble() * total_coverage
+//println("$input.vcf $param_map")
+        def coverage = param_map[get_fname("$input.vcf")]["probability"].toDouble() * total_coverage
         def outname = output.prefix[0..-2]
         exec """
             $ART/art_illumina -i $input.fasta -p -na
@@ -200,6 +203,35 @@ STR_coverage = {
     }
 }
 
+STR_locus_counts = {
+    transform("bam") to ("locus_counts.txt") {
+        exec """
+            /group/bioi1/harrietd/src/miniconda3/envs/STR/bin/python /group/bioi1/harrietd/git/micro-genotyper-long/python_code/identify_locus.py
+            --bam $input.bam
+            --bed /group/bioi1/harrietd/git/STR-pipelines/simulate_reads/reference-data/hg19.simpleRepeat_period1-6.bed
+            --output $output.txt
+        """
+    }
+}
+
+@transform('coverage')
+coverage = {
+    exec """
+        bedtools coverage
+            -sorted -d 
+            -g ${REF}.genome
+            -a $EXOME_TARGET 
+            -b $input.bam 
+            > $output.coverage
+     ""","bedtools"
+}
+
+median_cov = {
+    exec """
+        cut -f 5 $input.coverage  | sort -n | awk -f /group/bioi1/harrietd/git/micro-genotyper-long/repeat_genotyper_bpipes/median.awk > $output
+     """
+}
+
 // -O v for vcf, -O z for vcf.gz
 // Also, sort.
 @filter('trimmed')
@@ -215,36 +247,38 @@ clean_intermediates = { cleanup "*.fq", "*.fastq.gz", "*.stutter.vcf", "*.stutte
 // Run pipeline
 
 // Adjust number of variants to simulate here
-simID = (1..50)
+simID = (1..5)
 
 run {
 // Generate bed file of loci to simulate. One locus pathogenic per file (rest normal range).
 // Do this multiple times until a few scenarios have been covered
 // Also one bed file of all the remaining loci (not in the above file) with normal ranges (background).
 
-
     simID * [
 
         mutate_all  +
         cat_bed +
-        generate_vcf +
+        generate_vcf 
 
-        "%.truth.vcf" * [ trim_variants ] +
+    ] +
 
         "%.stutter.*" * [
             merge_bed + mutate_ref + generate_reads
-        ]
-     ] +
+        ] +
 
-        "%.all.*.stutter.merged_L001_R%.fq" * [
+        "%.all.*.stutter_L001_R%.fq" * [
             combine_gzip
         ] +
 
         '%_R*.fastq.gz' * [
             set_sample_info +
             align_bwa + index_bam +
+            STR_locus_counts +
+            coverage +
+            median_cov +
             STR_coverage
         ] +
 
-        clean_intermediates
+        "%.truth.vcf" * [ trim_variants ] //+
+        //clean_intermediates
 }
