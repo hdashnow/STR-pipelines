@@ -18,7 +18,7 @@ total_coverage = 30
 //LOCUS='chr2:233712201-233712246'
 LOCUS='chr13:70713515-70713561' //ATXN80OS CAG repeat
 // Adjust number of variants to simulate here
-simID = (1..5)
+simID = (1..100)
 
 def get_fname(path) {
     x = path.split("/")[-1]
@@ -271,7 +271,7 @@ run {
             merge_bed + mutate_ref + generate_reads
         ] +
 
-        "%.all.*.stutter_L001_R%.fq" * [
+        "%.sorted.*.stutter.merged_L001_R%.fq" * [
             combine_gzip
         ] +
 
