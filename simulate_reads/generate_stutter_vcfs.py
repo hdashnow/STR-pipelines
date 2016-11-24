@@ -289,7 +289,7 @@ def mutate_str(ref_sequence, repeatunit, delta, random=False):
                     break
         raise ValueError("There were not {0} copies of {1} repeat unit available to be deleted in {2}.".format(-delta, repeatunit, ref_sequence))
 
-def trim_indel(ref, alt):
+def right_trim_indel(ref, alt):
     """Generate the shortest representation of an indel my removing the rightmost bases.
     XXX Currently only working with a single alt, should be generalised for multiple.
 
@@ -312,6 +312,32 @@ def trim_indel(ref, alt):
             else:
                 return ref[:-i+1], alt[:-i+1]
     return ref[:-i], alt[:-i]
+
+def left_trim_indel(ref, alt, pos):
+    """Generate the shortest representation of an indel my removing the leftmost bases.
+    XXX Currently only working with a single alt, should be generalised for multiple.
+
+    Args:
+        ref (str): The version of the sequence in the reference genome.
+        alt (str): Alternative version of the sequence caused by an insertion or
+        deletion.
+        pos (int): Start position of the variant
+
+    Returns:
+        (ref_normalised str, alt_normalised str, pos_normalised int)
+    """
+    if min(len(ref), len(alt)) <= 1:
+        return ref, alt, pos
+    if ref == alt:
+        raise ValueError("Ref and alt are the same. ref: {0} alt: {1}".format(ref, alt))
+    for i in range(0, min(len(ref), len(alt))):
+        new_pos = pos + i
+        if ref[i] != alt[i]: # Check if the leftmost bases are different
+            if i == 0: # The last bases are identical, so can't be trimmed
+                return ref, alt, new_pos
+            else:
+                return ref[i:], alt[i:], new_pos
+    return ref[i:], alt[i:], new_pos
 
 def get_vcf_writer(vcf_outfile, samples=['SAMPLE'], source='generate_stutter_vcfs.py', ref='ucsc.hg19.fasta'):
     """Write vcf header to file given. Return writer object for that file.
@@ -546,13 +572,14 @@ def main():
             vcf_probs_dict[stutter_id]['bed_records'].append(bedout_line) # These should always be unique per bed file, if not there's a bug
 
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
-                ref, alt = trim_indel(ref_sequence, mutatant_allele)
+                ref, alt, relative_pos = left_trim_indel(ref_sequence, mutatant_allele, 0)
+                ref, alt = right_trim_indel(ref, alt)
                 # Check for an empty ref sequence. XXX alt allowed to be blank. Is this allowed in VCF format?
                 if len(ref) == 0:
                     sys.stderr.write('ref: ' + ref_sequence + ' mutant: ' + mutatant_allele + '\n')
                     raise ValueError("Allele is blank ref: {0} alt: {1} chr: {2} pos: {3}".format(ref, alt, chrom, start))
 
-                vcf_start = start + 1 # convert to base 1 for vcf file
+                vcf_start = start + relative_pos + 1 # convert to base 1 for vcf file
                 vcf_alt, vcf_gt = get_alt_genotype(ref, alt)
                 vcf_id = '.'
                 vcf_ref = ref
