@@ -1,4 +1,4 @@
-name: STR
+name: sim
 channels:
 - bioconda
 dependencies:

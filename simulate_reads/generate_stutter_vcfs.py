@@ -36,13 +36,13 @@ def parse_args():
         help='Fasta reference')
     parser.add_argument(
         'bed', type=str,
-        help='bed file containing genomic locations of STRs and their repeat units. Genomic locations should be relative to the fasta reference.')
+        help='bed file containing genomic locations of STRs and their repeat units. Genomic locations should be relative to the fasta reference. format: chr start stop name, where name is in the format repeatunit_genotype, e.g. CAG_-2/1')
     parser.add_argument(
         '--stutter', type=str, required=False,
         help='csv file containing stutter models. If none, no stutter will be simulated') #XXX need to describe this properly
     parser.add_argument(
-        '--output', type=str, required=False,
-        help='Base name for output files, including vcfs and bed files.') #XXX should have a default for this?
+        '--output', type=str, required=False, default='',
+        help='Base name for output files, including vcfs and bed files.')
     parser.add_argument(
         '--truth', type=str, required=False,
         help='File name for output vcf of true genotypes for all loci. (default: output base name .truth.vcf)')
@@ -438,7 +438,7 @@ def main():
     if args.truth:
         truth_fname = args.truth
     else:
-        truth_fname = outfile_base + '.truth.vcf'
+        truth_fname = outfile_base + 'truth.vcf'
     vcf_truth = get_vcf_writer(truth_fname)
 
     if args.stutter_output:
@@ -467,9 +467,10 @@ def main():
     fastafile = pysam.Fastafile(args.ref)
     # For each delta and stutter probability combination record:
     # Stutter_vcf_fname, prob, bed_out, delta, vcf_records
-    vcf_probs_dict = {}
+
 
     for region in bed_dict:
+        vcf_probs_dict = {}
         chrom = bed_dict[region]['chr']
         start = bed_dict[region]['start'] # These positions are in base-0
         stop = bed_dict[region]['stop']
@@ -555,8 +556,9 @@ def main():
                     else:
                         correct_id = True
                 else:
-                    stutter_vcf_fname = '{0}.{1}.stutter.vcf'.format(outfile_base, stutter_id)
-                    bed_out = '{0}.{1}.stutter.bed'.format(outfile_base, stutter_id)
+                    out_prefix = outfile_base + vcf_locus + '_' + name.replace('/','_')
+                    stutter_vcf_fname = '{0}.{1}.stutter.vcf'.format(out_prefix, stutter_id)
+                    bed_out = '{0}.{1}.stutter.bed'.format(out_prefix, stutter_id)
                     vcf_probs_dict[stutter_id] = {
                         'stutter_vcf_fname': stutter_vcf_fname,
                         'prob': prob,
