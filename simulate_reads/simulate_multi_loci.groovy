@@ -71,7 +71,7 @@ generate_vcf = {
         produce(bedname.prefix + ".truth.vcf", "*.stutter.vcf", bedname.prefix + ".txt", "*.stutter.bed") {
 
             exec """
-                python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix --stutter $STUTTER --flank 100 > $output.txt
+                python $TOOLS/generate_stutter_vcfs.py $REF $input.bed --output $output.prefix.prefix --stutter $STUTTER --flank 10000 > $output.txt
         """
         }
     }
