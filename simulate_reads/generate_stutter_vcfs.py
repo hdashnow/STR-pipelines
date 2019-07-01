@@ -574,8 +574,8 @@ def main():
             vcf_probs_dict[stutter_id]['bed_records'].append(bedout_line) # These should always be unique per bed file, if not there's a bug
 
             if delta != 0: # i.e. don't print any lines in the vcf file for the reference allele - it will be a blank vcf.
-                ref, alt, relative_pos = left_trim_indel(ref_sequence, mutatant_allele, 0)
-                ref, alt = right_trim_indel(ref, alt)
+                ref, alt = right_trim_indel(ref_sequence, mutatant_allele)
+                ref, alt, relative_pos = left_trim_indel(ref, alt, 0)
                 # Check for an empty ref sequence. XXX alt allowed to be blank. Is this allowed in VCF format?
                 if len(ref) == 0:
                     sys.stderr.write('ref: ' + ref_sequence + ' mutant: ' + mutatant_allele + '\n')
