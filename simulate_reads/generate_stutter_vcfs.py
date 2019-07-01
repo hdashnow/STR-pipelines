@@ -438,7 +438,7 @@ def main():
     if args.truth:
         truth_fname = args.truth
     else:
-        truth_fname = outfile_base + 'truth.vcf'
+        truth_fname = outfile_base + '.truth.vcf'
     vcf_truth = get_vcf_writer(truth_fname)
 
     if args.stutter_output:
@@ -469,8 +469,8 @@ def main():
     # Stutter_vcf_fname, prob, bed_out, delta, vcf_records
 
 
+    vcf_probs_dict = {}
     for region in bed_dict:
-        vcf_probs_dict = {}
         chrom = bed_dict[region]['chr']
         start = bed_dict[region]['start'] # These positions are in base-0
         stop = bed_dict[region]['stop']
@@ -544,19 +544,19 @@ def main():
 
             # Save details to vcf_probs_dict
             unique_counter = 1
-            stutter_id = '{0}_{1}'.format(prob, unique_counter)
             vcf_locus = '{0}-{1}'.format(chrom, start + 1) # locus position to check if this locus has already been included
+            stutter_id = '{0}_{1}_{2}'.format(vcf_locus, prob, unique_counter)
             correct_id = False
             # Check if the stutter_id already contains an entry for this locus
             while not correct_id:
                 if stutter_id in vcf_probs_dict:
                     if vcf_locus in vcf_probs_dict[stutter_id]['loci']:
                         unique_counter += 1 #i.e. keep increasing the counter until you find a stutter_id that doesn't have this locus already
-                        stutter_id = '{0}_{1}'.format(prob, unique_counter)
+                        stutter_id = '{0}_{1}_{2}'.format(vcf_locus, prob, unique_counter)
                     else:
                         correct_id = True
                 else:
-                    out_prefix = outfile_base + vcf_locus + '_' + name.replace('/','_')
+                    out_prefix = outfile_base + '.' + vcf_locus + '_' + name.replace('/','_')
                     stutter_vcf_fname = '{0}.{1}.stutter.vcf'.format(out_prefix, stutter_id)
                     bed_out = '{0}.{1}.stutter.bed'.format(out_prefix, stutter_id)
                     vcf_probs_dict[stutter_id] = {
@@ -603,6 +603,8 @@ def main():
     total_files = len(list(vcf_probs_dict.keys()))
     progress = 0
 
+    print(vcf_probs_dict)
+
     for id in vcf_probs_dict:
         # Done write any files with zero probability XXX note that the output of
         # the filenames earlier has to be fixed to align with this before it can be activated.
@@ -617,6 +619,7 @@ def main():
 
         # Write a vcf file
         vcf_stutter = get_vcf_writer(vcf_probs_dict[id]['stutter_vcf_fname'])
+        print(vcf_stutter)
         for record in vcf_probs_dict[id]['vcf_records']:
             vcf_stutter.write(record + '\n') #XXX Need to close vcf writer?
 
